@@ -1,7 +1,7 @@
-application
-===========
+Crafty
+======
 
-A library for easily setting up your own Java applications. All done in a few lines of codes. Beside providing classes to handle resources or even the applications data storage this library comes along with other several suppliers to reinstate the application state or even to control newer versions by updating the application files.
+A library for easily setting up your own Java applications. All done in a few lines of code. Beside providing classes to handle resources or even the applications data storage this library comes along with other several suppliers to reinstate the application state or even to control newer versions by updating the application packages.
 
 Features
 --------
@@ -19,7 +19,7 @@ Features
 
 Getting started
 ---------------
-To initialize an application simply call the 'Application.launch(String)' method.
+To initialize an application simply call the `Application.launch(String)` method.
 ```java
 public class ApplicationExample
 {
@@ -33,8 +33,9 @@ public class ApplicationExample
         
         // Your application logic here ...
         
+        // Closes the application and shuts down the JVM
         Application.exit();
     }
 }
 ```
-Get the application instance by 'Application.get()' to gain access to all of the application features.
+Get the application instance by `Application.get()` to gain access to all of the application features.
