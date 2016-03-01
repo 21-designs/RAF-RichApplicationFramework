@@ -25,6 +25,9 @@ import java.io.Serializable;
 
 import javax.swing.Timer;
 
+import org.drost.application.suppliers.AbstractExceptionHandler;
+import org.drost.application.suppliers.AbstractInactivityHandler;
+
 public class StateChangeController
 {
 	/**
@@ -54,10 +57,10 @@ public class StateChangeController
 		}
 		
 		
-		public Statement(T source, Thread owner, long when)
+		public Statement(T source, Thread ownerThread, long when)
 		{
 			this.soure = source;
-			this.owner = owner;
+			this.owner = ownerThread;
 			timestamp = when;
 		}
 
@@ -65,7 +68,7 @@ public class StateChangeController
 			return soure;
 		}
 
-		public Thread getOwner() {
+		public Thread getOwnerThread() {
 			return owner;
 		}
 		

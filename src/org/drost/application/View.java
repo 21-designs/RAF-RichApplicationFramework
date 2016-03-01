@@ -30,6 +30,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
+import org.drost.application.exceptions.ExceptionMessages;
+
 /**
  * Holds the main window of the current application and provides several
  * functionalities related to displayable application content. This class only
