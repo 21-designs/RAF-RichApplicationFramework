@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application;
+package org.drost.utils;
 
 /**
  * Gains access to several platform related information like the current
@@ -29,7 +29,7 @@ package org.drost.application;
  * @since 1.0
  *
  */
-public class Platform 
+public class PlatformUtils 
 {
 	/** Stores the name of the current operating system. */
 	public static final String OS = System.getProperty("os.name").toLowerCase();
@@ -49,7 +49,7 @@ public class Platform
 	
 	
 	
-	private Platform() {}
+	private PlatformUtils() {}
 
 	public static boolean isWindows() 
 	{

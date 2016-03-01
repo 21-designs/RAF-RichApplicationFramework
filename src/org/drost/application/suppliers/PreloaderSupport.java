@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application;
+package org.drost.application.suppliers;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,13 +26,13 @@ import java.lang.management.ManagementFactory;
 import java.net.URLDecoder;
 import java.util.Map;
 
-public class ApplicationBuild
+public class PreloaderSupport
 {	
 	/**
 	 * Creates a object to hold some of the 
 	 * @param app
 	 */
-	ApplicationBuild()
+	public PreloaderSupport()
 	{
 		
 	}

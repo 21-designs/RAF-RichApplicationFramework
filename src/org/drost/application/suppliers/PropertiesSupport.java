@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application;
+package org.drost.application.suppliers;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,23 +25,28 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-public class PropertiesService 
+import org.drost.application.FileStorage;
+import org.drost.application.FileStorage.SaveAsConfiguration;
+
+public class PropertiesSupport implements SaveAsConfiguration
 {
-	public static final String DEFAULT_FILE = "application.properties";
-	
+	public static final String DEFAULT_FILE = "Application.properties";
+
+	public static final String PROPERTY_UNDEFINED = "undefined";
+
 	protected Properties properties = null;
 
 	protected Class<?> associatedClass = null;
-	
+
 	protected String filename;
-	
+
 	private String filepath = null;
 	
 	/**
 	 * 
 	 * @param associatedClass
 	 */
-	public PropertiesService(Class<?> associatedClass)
+	public PropertiesSupport(Class<?> associatedClass)
 	{
 		properties = new Properties();
 		
@@ -51,6 +56,20 @@ public class PropertiesService
 	
 	
 	
+	public String getFilename( )
+	{
+		return filename;
+	}
+
+
+
+	public void setFilename( String filename )
+	{
+		this.filename = filename;
+	}
+
+
+
 	public Properties getProperties() {
 		return properties;
 	}

@@ -33,6 +33,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Properties;
+import java.util.prefs.Preferences;
+
+import org.drost.utils.PlatformUtils;
 
 /**
  * Defines a local file storage interface, This class allows to define a local
@@ -113,7 +117,7 @@ public final class FileStorage
 	 * @author kimschorat
 	 *
 	 */
-	public static interface StoreAsConfiguration
+	public static interface SaveAsConfiguration
 	{
 		/**
 		 * The associated directory path.
@@ -131,7 +135,7 @@ public final class FileStorage
 	 * @author kimschorat
 	 *
 	 */
-	public static interface StoreAsResource
+	public static interface SaveAsResource
 	{
 		/**
 		 * The associated directory path.
@@ -145,8 +149,8 @@ public final class FileStorage
 	 * and their related directory of type {@code String}. Several classes may
 	 * be mapped to one directory to group several related types.
 	 * 
-	 * @see StoreAsConfiguration
-	 * @see StoreAsResource
+	 * @see SaveAsConfiguration
+	 * @see SaveAsResource
 	 */
 	protected HashMap<Class<?>[], String> directoryMap;
 	
@@ -162,9 +166,10 @@ public final class FileStorage
 	public FileStorage(String directoryPath)
 	{
 		directoryMap = new HashMap<Class<?>[], String>();
-		directoryMap.put(new Class<?>[] {StoreAsConfiguration.class}, StoreAsConfiguration.path);
-		directoryMap.put(new Class<?>[] {StoreAsResource.class}, StoreAsResource.path);
-		
+		directoryMap.put( new Class<?>[] { SaveAsConfiguration.class, Properties.class, Preferences.class },
+				SaveAsConfiguration.path );
+		directoryMap.put( new Class<?>[] { SaveAsResource.class }, SaveAsResource.path );
+
 		defaultDirectory = getSystemDefaultDirectory();
 		
 		currentDirectory = directoryPath;
@@ -553,7 +558,7 @@ public final class FileStorage
 		String home = System.getProperty("user.home");
 		File parent = new File(home).getParentFile();
 
-		if (Platform.isWindowsNT()) // NT/2000/XP
+		if (PlatformUtils.isWindowsNT()) // NT/2000/XP
 		{
 			// C:\Documents and Settings\All Users\Application Data
 			// Surmise that the "All Users" folder will be a child of the
@@ -563,7 +568,7 @@ public final class FileStorage
 				return folder.getAbsolutePath();
 		}
 
-		else if (Platform.isWindows9X()) // 95/98/ME
+		else if (PlatformUtils.isWindows9X()) // 95/98/ME
 		{
 			// C:\Windows
 			File folder = new File(home);
@@ -571,7 +576,7 @@ public final class FileStorage
 				return folder.getAbsolutePath();
 		}
 
-		else if (Platform.isWindowsVista()) 
+		else if (PlatformUtils.isWindowsVista()) 
 		{
 			// C:\ProgramData
 			File folder = new File(parent.getParentFile(), "ProgramData");
@@ -583,7 +588,7 @@ public final class FileStorage
 			if (folder.canRead() && folder.canWrite())
 				return folder.getAbsolutePath();
 		}
-		else if (Platform.isMac()) 
+		else if (PlatformUtils.isMac()) 
 		{
 			File folder = new File("/Library/Application Support");
 			

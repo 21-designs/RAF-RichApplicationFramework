@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application;
+package org.drost.application.suppliers;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,6 +30,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.Preferences;
 
+import org.drost.application.FileStorage;
 import org.drost.utils.ByteArrayUtils;
 
 /**
@@ -37,7 +38,7 @@ import org.drost.utils.ByteArrayUtils;
  * @author kimschorat
  *
  */
-public class PreferencesService 
+public class PreferencesSupport 
 {
 	public static final String DEFAULT_FILE = "prefs.xml";
 	
@@ -54,7 +55,7 @@ public class PreferencesService
 	 * 
 	 * @param associatedClass 
 	 */
-	public PreferencesService(Class<?> associatedClass)
+	public PreferencesSupport(Class<?> associatedClass)
 	{
 		this.associatedClass = associatedClass;
 		

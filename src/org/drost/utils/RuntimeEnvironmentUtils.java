@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application;
+package org.drost.utils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,7 +30,7 @@ import java.net.URL;
  * @since 1.0
  *
  */
-public class RuntimeEnvironment 
+public class RuntimeEnvironmentUtils 
 {
 	private static String fullVersion = "";
 	
@@ -78,5 +78,5 @@ public class RuntimeEnvironment
 	public static final boolean IS_JAVA_18_OR_LATER = System.getProperty("java.version").compareTo("1.8") >= 0;
 
 	
-	private RuntimeEnvironment() {}
+	private RuntimeEnvironmentUtils() {}
 }

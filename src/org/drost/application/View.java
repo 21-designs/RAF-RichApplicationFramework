@@ -297,26 +297,39 @@ public class View
 	 * 
 	 * @see UIManager#setLookAndFeel(String)
 	 */
-	public void setTheme(String qualifiedName)
+	public void setLookAndFeel(String qualifiedName)
 	{
-		try {
-			UIManager.setLookAndFeel(qualifiedName);
-		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
-				| UnsupportedLookAndFeelException e) {
-			e.printStackTrace();
-		}
-		for(int i = 0; i < JFrame.getWindows().length; i++)
+		runOnEDT( new Runnable( )
 		{
-			Window w = JFrame.getWindows()[i];
-			SwingUtilities.updateComponentTreeUI(w);
-		}
+
+			@Override
+			public void run( )
+			{
+				try
+				{
+					UIManager.setLookAndFeel( qualifiedName );
+				}
+				catch ( ClassNotFoundException | InstantiationException | IllegalAccessException
+						| UnsupportedLookAndFeelException e )
+				{
+					e.printStackTrace( );
+				}
+				for( int i = 0; i < JFrame.getWindows( ).length; i++ )
+				{
+					Window w = JFrame.getWindows( )[i];
+					SwingUtilities.updateComponentTreeUI( w );
+				}
+			}
+
+		} );
+		
 	}
 	
 	
 	/**
 	 * <p>
 	 * This method simply invokes the homonymous method
-	 * {@link #setTheme(String)} passing the class name of the specified class
+	 * {@link #setLookAndFeel(String)} passing the class name of the specified class
 	 * type.
 	 * </p>
 	 * 
@@ -327,9 +340,9 @@ public class View
 	 * @throws IllegalAccessException
 	 * @throws UnsupportedLookAndFeelException
 	 */
-	public void setTheme(LookAndFeel laf) 
+	public void setLookAndFeel(LookAndFeel laf) 
 	{
-		setTheme(laf.getClass().getName());
+		setLookAndFeel(laf.getClass().getCanonicalName());
 	}
 	
 	

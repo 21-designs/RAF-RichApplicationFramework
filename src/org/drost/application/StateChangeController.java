@@ -1,143 +1,47 @@
 /*
- * This file is part of the application library that simplifies common 
+ * This file is part of the application library that simplifies common
  * initialization and helps setting up any java program.
  * 
  * Copyright (C) 2016 Yannick Drost, all rights reserved.
  * 
- * This program is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version.
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
  * 
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
- * Public License for more details.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
  * 
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License along with
+ * this program. If not, see <http://www.gnu.org/licenses/>.
  */
 package org.drost.application;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.Serializable;
+import org.drost.application.interference.AbstractExceptionHandler;
+import org.drost.application.interference.AbstractInactivityHandler;
 
-import javax.swing.Timer;
-
-import org.drost.application.suppliers.AbstractExceptionHandler;
-import org.drost.application.suppliers.AbstractInactivityHandler;
-
+/**
+ * Contains and provides access to different interference handlers.
+ * @author kimschorat
+ *
+ */
 public class StateChangeController
 {
-	/**
-	 * A generic notification class that informs existing handlers. The
-	 * available constructors force any instantiation to set important class
-	 * fields. A notification stores some information about the {@code source}
-	 * object that created a notification object. The {code owner} Thread that
-	 * keeps this object.
-	 * 
-	 * @author kimschorat
-	 *
-	 * @param <T>
-	 *            The generic source type.
-	 */
-	@SuppressWarnings("serial")
-	public static class Statement<T> implements Serializable
-	{
-		private final T soure;
-		private final Thread owner;
-		private final long timestamp;
-		
-		public Statement(T source, Thread owner)
-		{
-			this.soure = source;
-			this.owner = owner;
-			timestamp = System.currentTimeMillis();
-		}
-		
-		
-		public Statement(T source, Thread ownerThread, long when)
-		{
-			this.soure = source;
-			this.owner = ownerThread;
-			timestamp = when;
-		}
-
-		public T getSoure() {
-			return soure;
-		}
-
-		public Thread getOwnerThread() {
-			return owner;
-		}
-		
-		public long getTimestamp() {
-			return timestamp;
-		}
-	}
-	
-	
-	
-	/**
-	 * This interface provides one single method that each implementing class
-	 * type should implement.
-	 * 
-	 * @author kimschorat
-	 *
-	 * @param <T>
-	 *            The generic source type of the {@link Statement}.
-	 */
-	public interface StatementHandler<T> extends Serializable
-	{
-		/**
-		 * Handles this invoking notification object specified by every
-		 * implementing subclass.
-		 * 
-		 * @param info
-		 *            The notification object with a predefined type parameter.
-		 */
-		public void handle(final Statement<T> info);
-	}
-	
-	
-	
 	AbstractExceptionHandler exceptionHandler = null;
-	
+
 	AbstractInactivityHandler inactiveHandler = null;
-	
-	int inactiveIntervaleMinutes = 60;
-	
-	Timer inactiveTimer = new Timer(0, new ActionListener() {
 
-		@Override
-		public void actionPerformed(ActionEvent e) 
-		{
-			if(inactiveHandler != null)
-			{
-				inactive = true;
-				inactiveHandler.handle(new Statement<Void>(null, Thread.currentThread()));
-			}
-		}
-	});
-	
-	/**
-	 * Indicates that the user is inactive. This is determined by checking the
-	 * user inputs.
-	 */
-	protected volatile boolean inactive = false;
-	
-
-	
 	/**
 	 * Returns the applications exception handler to
 	 * 
 	 * @return The exception handler.
 	 */
-	public AbstractExceptionHandler getExceptionHandler() {
+	public AbstractExceptionHandler getExceptionHandler( )
+	{
 		return exceptionHandler;
 	}
-
 
 	/**
 	 * Sets a new handler for all uncaught exception occuring in this
@@ -146,20 +50,22 @@ public class StateChangeController
 	 * @param handler
 	 *            The handler for uncaught exceptions.
 	 */
-	public void setExceptionHandler(AbstractExceptionHandler handler) {
+	public void setExceptionHandler( AbstractExceptionHandler handler )
+	{
 		exceptionHandler = handler;
+		if ( !exceptionHandler.isRegistered( ) )
+			exceptionHandler.registerHandler( );
 	}
-
 
 	/**
 	 * Sets the handler for that case the application/ the user gets inactive.
 	 * 
 	 * @return The inactive handler.
 	 */
-	public AbstractInactivityHandler getInactivityHandler() {
+	public AbstractInactivityHandler getInactivityHandler( )
+	{
 		return inactiveHandler;
 	}
-
 
 	/**
 	 * Sets a new handler for that case the application/ the user gets inactive.
@@ -167,56 +73,10 @@ public class StateChangeController
 	 * @param handler
 	 *            The handler for inactivity.
 	 */
-	public void setInactivityHandler(AbstractInactivityHandler handler) {
+	public void setInactivityHandler( AbstractInactivityHandler handler )
+	{
 		inactiveHandler = handler;
+		if ( !inactiveHandler.isRegistered( ) )
+			inactiveHandler.registerHandler( );
 	}
-	
-	
-	/**
-	 * Sets the delay after a inactivity is suggested.
-	 * 
-	 * @param minutes
-	 *            The delay in minutes.
-	 */
-	public synchronized void setInactiveIntervalMinutes(int minutes)
-	{
-		inactiveIntervaleMinutes = minutes;
-		
-		int millis = minutes * 60000;
-		inactiveTimer.setInitialDelay(millis);
-		inactiveTimer.setDelay(millis);
-		
-		if(inactiveTimer.isRunning())
-		{
-			System.out.println("timer was still running");
-			inactiveTimer.restart();
-			inactive = false;
-		}
-	}
-	
-	
-	/**
-	 * Sets the delay after a inactivity is suggested.
-	 * 
-	 * @return minutes The delay in minutes.
-	 */
-	public int getInactiveIntervaleMinutes()
-	{
-		return inactiveIntervaleMinutes;
-	}
-	
-	
-	/**
-	 * Returns whether the inactive state has been entered.
-	 * 
-	 * @return whether the inactive state has been entered.
-	 * 
-	 * @see #setInactiveIntervalMinutes(int)
-	 */
-	public boolean isInactive()
-	{
-		return inactive;
-	}
-
-	
 }

@@ -17,34 +17,37 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application.suppliers;
-
-import org.drost.application.Application;
-import org.drost.application.StateChangeController.Statement;
-import org.drost.application.StateChangeController.StatementHandler;
+package org.drost.application.interference;
 
 /**
- * Handles a certain state when the user seems to be inactive. This is
- * always a suggestion and is done by listening to the mouse or keyboard
- * inputs.
+ * Simply implements the abstract method {@link #handle(StateChangeInfo)} as
+ * declared in {@link StateChangeHandler}.
  * 
  * @author kimschorat
  * @since 1.0
  * 
- * @see StatementHandler
- * @see Application
+ * @see AbstractInactivityHandler
  */
 @SuppressWarnings("serial")
-public abstract class AbstractInactivityHandler implements StatementHandler<Void>
+public class DefaultInactivityHandler extends AbstractInactivityHandler 
 {
+	
 	/**
-	 * Prints out the owning thread that caused this exception and additional
-	 * the stack trace of the associated exception.
+	 * Prints a notification message to the console that the user seems to
+	 * be inactive and invokes a garbage collection. The possible
+	 * performance loss should not be recognizable if the user is truly
+	 * inactive.
 	 * 
 	 * @param info
 	 *            The notification that informs this handler.
+	 *            
+	 * @see System#gc()
 	 */
 	@Override
-	public abstract void handle(Statement<Void> info);
-	
+	public void handle(StateChangeInfo<Void> info) 
+	{
+		System.out.println("The user seems inactive thus the application starts a manual garbage collection. This might result in performance loss.");
+		System.gc();
+	}
+
 }

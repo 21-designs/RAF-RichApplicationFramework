@@ -17,36 +17,31 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package org.drost.application.suppliers;
-
-import org.drost.application.StateChangeController.Statement;
-import org.drost.application.StateChangeController.StatementHandler;
+package org.drost.application.interference;
 
 /**
- * Handles all uncaught exceptions application wide. Whenever an exception
- * is thrown because any unexpected state change occurs, this handler will
- * get informed by invoking its {@link #handle(Statement)} method. There
- * is no need to call this method directly.
- * 
- * <p>
- * This class implements the {@link StatementHandler} interface. The
- * generic class parameter is defined by the {@link Throwable} class type.
- * </p>
+ * Simply implements the abstract method {@link #handle(StateChangeInfo)} as
+ * declared in {@link StateChangeHandler}.
  * 
  * @author kimschorat
  * @since 1.0
  * 
- * @see StatementHandler
+ * @see AbstractExceptionHandler
  */
 @SuppressWarnings("serial")
-public abstract class AbstractExceptionHandler implements StatementHandler<Throwable>
+public class DefaultExceptionHandler extends AbstractExceptionHandler
 {
 	/**
-	 * This method is {@code abstract} and does not implement a method body.
+	 * Prints out the owning thread that caused this exception and additional
+	 * the stack trace of the associated exception.
 	 * 
 	 * @param info
 	 *            The notification that informs this handler.
 	 */
 	@Override
-	public abstract void handle(Statement<Throwable> info);
+	public void handle(StateChangeInfo<Throwable> info) 
+	{
+		// System.err.println("An exception occurred thrown by: " + info.getOwner().toString() + "\r\n");
+		info.getSoure().printStackTrace();
+	}
 }

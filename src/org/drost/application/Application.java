@@ -28,7 +28,6 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.URL;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
@@ -36,8 +35,10 @@ import java.nio.channels.OverlappingFileLockException;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
-import org.drost.application.StateChangeController.Statement;
 import org.drost.application.exceptions.ExceptionMessages;
+import org.drost.application.interference.DefaultExceptionHandler;
+import org.drost.application.interference.DefaultInactivityHandler;
+import org.drost.utils.PlatformUtils;
 
 /**
  * A bundles of most common features related to a basic application.
@@ -126,11 +127,6 @@ public class Application
 	 */
 	protected static String id = null;
 
-	/**
-	 * Handles global notifications like exceptions or the inactivity state.
-	 */
-	protected static StateChangeController stateChangeController = null;
-
 	private static File			lockFile		= null;
 	private static FileChannel	lockFileChannel	= null;
 	private static FileLock		lock			= null;
@@ -169,19 +165,15 @@ public class Application
 	/**
 	 * Initializes the application instance by a unique identifier.
 	 */
-	private Application( String appID )
+	private Application( String ID )
 	{
-		if ( isValidID( appID ) )
+		if ( isValidID( ID ) )
 		{
-			id = appID;
-
-			context = Context.getContext( );
-
-			stateChangeController = new StateChangeController( );
+			id = ID;
 		}
 		else
 		{
-			id = "Undefined";
+			id = "Invalid";
 			throw new IllegalArgumentException( ExceptionMessages.MESSAGE_APPLICATION_INVALID_ID );
 		}
 	}
@@ -291,45 +283,49 @@ public class Application
 		if ( !isValidID( ID ) )
 			throw new IllegalArgumentException( ExceptionMessages.MESSAGE_APPLICATION_INVALID_ID );
 
-		addEDTComplements( );
 
+		final Application app = create( ID );
+		
+		context = Context.getContext( );
+		
+		DefaultInactivityHandler inactiveHandler = new DefaultInactivityHandler();
+		inactiveHandler.registerHandler( );
+		app.getContext( ).getStateChangeController( ).setInactivityHandler( inactiveHandler );
+		
+		
+		DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
+		exceptionHandler.registerHandler( );
+		app.getContext( ).getStateChangeController( ).setExceptionHandler( exceptionHandler );
+		
 		/*
-		 * Handle uncaught exceptions by informing the applications exception
-		 * handler.
+		 * Adds a global window event listener to the EDT. This is used to shut
+		 * down the application while implicit exit, meaning when the last
+		 * window is closed the application exits.
 		 */
-		Thread.setDefaultUncaughtExceptionHandler( new Thread.UncaughtExceptionHandler( )
+		long eventMask = AWTEvent.WINDOW_EVENT_MASK;
+
+		Toolkit.getDefaultToolkit( ).addAWTEventListener( new AWTEventListener( )
 		{
-			@Override
-			public void uncaughtException( Thread t, Throwable e )
+			public void eventDispatched( AWTEvent e )
 			{
-				if ( stateChangeController != null && stateChangeController.getExceptionHandler( ) != null )
+				if ( e.equals( WindowEvent.WINDOW_CLOSED ) )
 				{
-					stateChangeController.getExceptionHandler( ).handle( new Statement<Throwable>( e, t ) );
+					System.out.println( "Window closed." );
+
+					if ( Window.getWindows( ).length == 0 )
+					{
+						System.out.println( "Last window closed." );
+
+						if ( context != null && context.getView( ) != null && context.getView( ).isImplicitExit( ) )
+						{
+							close( );
+						}
+					}
 				}
-			}
-		} );
-
-		String lnf = null; // TODO read in predefined LookAndFeel. Maybe by
-							// property file.
-		try
-		{
-			if ( lnf != null )
-				UIManager.setLookAndFeel( lnf );
-		}
-		catch ( Exception e )
-		{
-			String message = "The LookAndFeel " + lnf + " is not supported.";
-
-			String name = UIManager.getSystemLookAndFeelClassName( );
-			try
-			{
-				UIManager.setLookAndFeel( name );
-			}
-			catch ( Exception ignore )
-			{
 
 			}
-		}
+		}, eventMask );
+
 
 		/*
 		 * Not used yet
@@ -341,7 +337,7 @@ public class Application
 		// // Application needs to be singed.
 		// }
 
-		return create( ID );
+		return Application.get( );
 	}
 
 	/**
@@ -424,75 +420,6 @@ public class Application
 	}
 
 	/**
-	 * Adds a global event listener for windows.
-	 */
-	private static void addEDTComplements( ) // Not necessary to run on EDT
-	{
-		/*
-		 * Adds a global window event listener to the EDT. This is used to shut
-		 * down the application while implicit exit, meaning when the last
-		 * window is closed the application exits.
-		 */
-		long eventMask = AWTEvent.WINDOW_EVENT_MASK;
-
-		Toolkit.getDefaultToolkit( ).addAWTEventListener( new AWTEventListener( )
-		{
-			public void eventDispatched( AWTEvent e )
-			{
-				if ( e.equals( WindowEvent.WINDOW_CLOSED ) )
-				{
-					System.out.println( "Window closed." );
-
-					if ( Window.getWindows( ).length == 0 )
-					{
-						System.out.println( "Last window closed." );
-
-						if ( context != null && context.getView( ) != null && context.getView( ).isImplicitExit( ) )
-						{
-							close( );
-						}
-					}
-				}
-
-			}
-		}, eventMask );
-
-		/*
-		 * Adds a global mouse and keyboard event listener to the EDT. This is
-		 * used to determine the users inactivity after no event has been fired
-		 * for a certain time.
-		 */
-		eventMask = AWTEvent.MOUSE_EVENT_MASK + AWTEvent.MOUSE_MOTION_EVENT_MASK + AWTEvent.MOUSE_WHEEL_EVENT_MASK
-				+ AWTEvent.KEY_EVENT_MASK;
-
-		Toolkit.getDefaultToolkit( ).addAWTEventListener( new AWTEventListener( )
-		{
-			public void eventDispatched( AWTEvent e )
-			{
-				// While the timer is not running the user has not made any
-				// interaction or the user is inactive.
-				if ( !stateChangeController.inactiveTimer.isRunning( ) )
-				{
-					initializeTimer( );
-				}
-
-				if ( stateChangeController.inactiveTimer.isRunning( ) )
-					stateChangeController.inactiveTimer.restart( );
-			}
-
-			private void initializeTimer( )
-			{
-				stateChangeController.inactive = false;
-				stateChangeController.inactiveTimer
-						.setInitialDelay( 60000 * stateChangeController.inactiveIntervaleMinutes );
-				stateChangeController.inactiveTimer.setRepeats( false );
-				stateChangeController.inactiveTimer.start( );
-			}
-
-		}, eventMask );
-	}
-
-	/**
 	 * Gracefully shuts down the application and closes the JVM. This method is
 	 * used to free resources as well as to check if the application is able to
 	 * exit or whether there are untreated dependencies.
@@ -526,7 +453,7 @@ public class Application
 		if ( isApplication( ) )
 		{
 			id = null;
-			stateChangeController = null;
+			context.stateChangeController = null;
 
 			get( ).unlock( );
 			lockFile = null;
@@ -543,7 +470,7 @@ public class Application
 
 	/**
 	 * Returns whether the inactive state has been entered. This is a cover
-	 * method for {@link StateChangeController#isInactive()}.
+	 * method for {@code getContext().getStateChangeController().getInactivityHandler().isInactive()}.
 	 * 
 	 * @return whether the inactive state has been entered.
 	 * 
@@ -551,18 +478,13 @@ public class Application
 	 */
 	public boolean isInactive( )
 	{
-		return stateChangeController.isInactive( );
+		if(get().getContext().getStateChangeController().getInactivityHandler( ) != null)
+			return get().getContext().getStateChangeController().getInactivityHandler( ).isInactive( );
+		
+		return false;
 	}
 
-	public StateChangeController getStateChangeController( )
-	{
-		return stateChangeController;
-	}
-
-	public void setStateChangeController( StateChangeController stateChangeController )
-	{
-		Application.stateChangeController = stateChangeController;
-	}
+	
 
 	/**
 	 * Locks this application and marks it as a single instance application.
@@ -693,7 +615,7 @@ public class Application
 		StringBuffer sb = new StringBuffer( );
 		sb.append( this.getClass( ).getName( ) );
 
-		sb.append( " id=" + id + " locked=" + isLocked( ) + " lockfile=" + lockFile + " platform=" + Platform.OS );
+		sb.append( " id=" + id + " locked=" + isLocked( ) + " lockfile=" + lockFile + " platform=" + PlatformUtils.OS );
 		return sb.toString( );
 	}
 }

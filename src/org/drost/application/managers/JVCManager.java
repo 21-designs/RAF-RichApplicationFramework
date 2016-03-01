@@ -23,7 +23,7 @@ import java.awt.Desktop;
 import java.net.URI;
 
 import org.drost.application.Application;
-import org.drost.application.RuntimeEnvironment;
+import org.drost.utils.RuntimeEnvironmentUtils;
 
 /**
  * This class handles the java version requirements for the {@code Application}
@@ -110,7 +110,7 @@ public final class JVCManager
 	 */
 	protected boolean isValidJavaVersion()
 	{
-		return (parseJavaVersion(RuntimeEnvironment.CURRENT_JAVA_VERSION) < minimumRequiredJavaVersion);
+		return (parseJavaVersion(RuntimeEnvironmentUtils.CURRENT_JAVA_VERSION) < minimumRequiredJavaVersion);
 	}
 	
 
@@ -132,9 +132,9 @@ public final class JVCManager
 	        }
 	    }
 		
-		throw new RuntimeException("\nYour java version " + RuntimeEnvironment.CURRENT_JAVA_VERSION 
+		throw new RuntimeException("\nYour java version " + RuntimeEnvironmentUtils.CURRENT_JAVA_VERSION 
 				+ " is too low. Please install " + minimumRequiredJavaVersion 
-				+ " or higher. We recomment to update to " + RuntimeEnvironment.LATEST_JAVA_VERSION_AND_REVISION);
+				+ " or higher. We recomment to update to " + RuntimeEnvironmentUtils.LATEST_JAVA_VERSION_AND_REVISION);
 	}
 	
 	
