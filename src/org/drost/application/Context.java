@@ -22,10 +22,18 @@ package org.drost.application;
 import java.io.File;
 import java.util.Properties;
 
+import org.drost.resources.ResourceAccess;
+
 /**
  * This class stores application related information about the application
  * context. This includes the local file path and other properties. Also it
- * allows to specify the main window for non command line applications.
+ * allows to specify the main window for non command-line applications.
+ * 
+ * <p>
+ * The singleton instance is accessible by the {@code static} method
+ * {@link #getContext()}. While there are relations to the file system and runtime
+ * properties this ensures only one state of this session.
+ * </p>
  * 
  * @author kimschorat
  * @since 1.0
@@ -33,6 +41,9 @@ import java.util.Properties;
  */
 public class Context 
 {
+	/**
+	 * The singleton instance.
+	 */
 	static Context instance = null;
 	
 	
@@ -46,10 +57,7 @@ public class Context
 		
 	private ApplicationBuild build;
 	
-	// private LocaleService
-	
-	// private ResourceBundle
-	
+	// private LocaleService	
 	
 	/**
 	 * Creates a new context and initializes all class fields.
@@ -61,13 +69,13 @@ public class Context
 	 */
 	private Context() 
 	{
-		String local = FileStorage.getSystemDefaultDirectory() + File.separator + Application.getID();
+		String local = FileStorage.getSystemDefaultDirectory() + File.separator + "Application" + File.separator + Application.getID();
 		fileStorage = new FileStorage(local);
 		
 		// Search for a predefined properties file
 		propertiesService = new PropertiesService(Application.class);
 		
-		// Use the application id instead of this default class.
+		// FIXME Use the application id instead of this default class.
 		preferencesService = new PreferencesService(Application.class);
 		
 		view = new View();
@@ -78,7 +86,7 @@ public class Context
 	
 	
 	
-	static synchronized Context get()
+	static synchronized Context getContext()
 	{
 		if(instance == null)
 		{
