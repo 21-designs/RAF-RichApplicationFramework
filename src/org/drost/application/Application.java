@@ -20,7 +20,9 @@
 package org.drost.application;
 
 import java.awt.AWTEvent;
+import java.awt.Dialog;
 import java.awt.EventQueue;
+import java.awt.Frame;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.AWTEventListener;
@@ -28,17 +30,17 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.management.ManagementFactory;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.util.Properties;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
-import org.drost.application.exceptions.ExceptionMessages;
-import org.drost.application.interference.DefaultExceptionHandler;
-import org.drost.application.interference.DefaultInactivityHandler;
-import org.drost.utils.PlatformUtils;
+import org.drost.application.suppliers.PropertiesSupport;
+import org.drost.utils.setup.PlatformUtils;
 
 /**
  * A bundles of most common features related to a basic application.
@@ -52,7 +54,7 @@ import org.drost.utils.PlatformUtils;
  * point for the usage of the {@code Application} class.</li>
  * <li>{@code Application.get()} returns the current instance and gains access
  * to application related features. Most of them are bundled in the
- * {@link Context} singleton. This includes handling resources, support for GUI
+ * {@link Substance} singleton. This includes handling resources, support for GUI
  * applications and defining application related properties.</li>
  * <li>To shut down the application the {@code exit} methods is called. Beside
  * cleaning up any resources it also performs a check if the application is
@@ -99,7 +101,7 @@ import org.drost.utils.PlatformUtils;
  * @see #exit()
  *
  */
-public class Application
+public class Application // Implement 'Observable' or add event listener system
 {
 	/**
 	 * The unique identifier for this application instance that is used to
@@ -131,7 +133,20 @@ public class Application
 	private static FileChannel	lockFileChannel	= null;
 	private static FileLock		lock			= null;
 
-	private static Context context = null;
+	/**
+	 * 
+	 */
+	private static Substance substance = null;
+	
+	/**
+	 * 
+	 */
+	private static Local localStorage;
+	
+	/**
+	 * 
+	 */
+	private static Appearance appearance;
 
 	/**
 	 * Wraps the singleton instance and prevents the usage of double-checked
@@ -143,7 +158,11 @@ public class Application
 	 */
 	private static class InstanceWrapper
 	{
-		public final Application value;
+		/**
+		 * The singleton instance wrapped in this container class. Since it
+		 * stores a singleton this field has a {@code final} modifier.
+		 */
+		public final Application instance;
 
 		/**
 		 * Create a new wrapper instance containing the applications singleton.
@@ -153,7 +172,7 @@ public class Application
 		 */
 		public InstanceWrapper( final Application value )
 		{
-			this.value = value;
+			this.instance = value;
 		}
 	}
 
@@ -170,11 +189,17 @@ public class Application
 		if ( isValidID( ID ) )
 		{
 			id = ID;
+			
+			substance = Substance.get( );
+			
+			localStorage = new Local();
+			
+			appearance = new Appearance();
 		}
 		else
 		{
-			id = "Invalid";
-			throw new IllegalArgumentException( ExceptionMessages.MESSAGE_APPLICATION_INVALID_ID );
+			id = null; // While uncaught exceptions are caught and ignored.
+			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
 		}
 	}
 
@@ -189,7 +214,7 @@ public class Application
 		if ( instanceWrapper == null )
 			return false;
 		else
-			return ( instanceWrapper.value != null );
+			return ( instanceWrapper.instance != null );
 	}
 
 	/**
@@ -244,12 +269,12 @@ public class Application
 	{
 		if ( Application.isApplication( ) )
 		{
-			return instanceWrapper.value;
+			return instanceWrapper.instance;
 		}
 		else
 		{
 			// Maybe return null instead of throwing an exception.
-			throw new IllegalStateException( ExceptionMessages.MESSAGE_APPLICATION_NOT_INITIALIZED );
+			throw new IllegalStateException( ApplicationConstants.MESSAGE_APPLICATION_NOT_INITIALIZED );
 		}
 	}
 
@@ -278,24 +303,101 @@ public class Application
 	public static synchronized Application launch( final String ID )
 	{
 		if ( Application.isApplication( ) )
-			throw new RuntimeException( ExceptionMessages.MESSAGE_APPLICATION_ALREADY_INITIALIZED );
+			throw new RuntimeException( ApplicationConstants.MESSAGE_APPLICATION_ALREADY_INITIALIZED );
 
 		if ( !isValidID( ID ) )
-			throw new IllegalArgumentException( ExceptionMessages.MESSAGE_APPLICATION_INVALID_ID );
+			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
 
 
-		final Application app = create( ID );
+		create( ID );
 		
-		context = Context.getContext( );
+//		substance = Substance.get( );
 		
-		DefaultInactivityHandler inactiveHandler = new DefaultInactivityHandler();
-		inactiveHandler.registerHandler( );
-		app.getContext( ).getStateChangeController( ).setInactivityHandler( inactiveHandler );
+//		DefaultInactivityHandler inactiveHandler = new DefaultInactivityHandler();
+//		inactiveHandler.registerHandler( );
+//		app.getContext( ).getStateChangeController( ).setInactivityHandler( inactiveHandler );
+//		
+//		
+//		DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
+//		exceptionHandler.registerHandler( );
+//		app.getContext( ).getStateChangeController( ).setExceptionHandler( exceptionHandler );
 		
+		PropertiesSupport ps = substance.getPropertiesSupport( );
 		
-		DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
-		exceptionHandler.registerHandler( );
-		app.getContext( ).getStateChangeController( ).setExceptionHandler( exceptionHandler );
+		if( localStorage.containsFile( localStorage.getDirectoryFor( PropertiesSupport.class ), ps.getFilename( ) ) )
+		{
+			// Check for preset properties to automatically initialize the application instance.
+			ps.load( localStorage );
+			
+			Properties p = ps.getProperties( );
+			
+			if(!p.getProperty( "lookandfeel" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ))
+			{
+				String property = p.getProperty( "lookandfeel" );
+				try
+				{
+					if( property != null )
+						appearance.setLookAndFeel( property );
+				}
+				catch ( Exception e )
+				{
+					String name = UIManager.getSystemLookAndFeelClassName( );
+					try
+					{
+						appearance.setLookAndFeel( name );
+					}
+					catch ( Exception ignore )
+					{
+
+					}
+				}
+			}
+			
+			if(!p.getProperty( "title" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ))
+			{
+				String property = p.getProperty( "title" );
+				if(appearance.hasMainView( ))
+				{
+					Window w = appearance.getMainView( );
+					
+					if(w instanceof Frame)
+						( (Frame) w ).setTitle( property );
+					
+					if(w instanceof Dialog)
+						( (Dialog) w ).setTitle( property );
+				}
+			}
+			
+		}
+		else
+		{
+			// Create some default properties to improve the next application launching.
+			Properties p = ps.getProperties( );
+			
+			p.setProperty( "name", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "author", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "publisher", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "company", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "website", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "description", PropertiesSupport.PROPERTY_UNDEFINED );
+
+			p.setProperty( "licence", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "copyright", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "version", PropertiesSupport.PROPERTY_UNDEFINED );
+
+			p.setProperty( "title", PropertiesSupport.PROPERTY_UNDEFINED );
+			p.setProperty( "lookandfeel", PropertiesSupport.PROPERTY_UNDEFINED );
+			
+			// p.setProperty( "database", PropertiesService.PROPERTY_UNDEFINED ); Support database connection
+			// p.setProperty( "dbuser", PropertiesService.PROPERTY_UNDEFINED ); Support database connection
+			// p.setProperty( "dbpass", PropertiesService.PROPERTY_UNDEFINED ); Support database connection
+			
+			// p.setProperty( "sessionuser", PropertiesService.PROPERTY_UNDEFINED ); Support user session
+			// p.setProperty( "sessionpass", PropertiesService.PROPERTY_UNDEFINED ); Support user session
+			
+
+			ps.save( localStorage );
+		}
 		
 		/*
 		 * Adds a global window event listener to the EDT. This is used to shut
@@ -308,7 +410,7 @@ public class Application
 		{
 			public void eventDispatched( AWTEvent e )
 			{
-				if ( e.equals( WindowEvent.WINDOW_CLOSED ) )
+				if ( e.equals( WindowEvent.WINDOW_CLOSING ) )
 				{
 					System.out.println( "Window closed." );
 
@@ -316,7 +418,7 @@ public class Application
 					{
 						System.out.println( "Last window closed." );
 
-						if ( context != null && context.getView( ) != null && context.getView( ).isImplicitExit( ) )
+						if ( substance != null && appearance != null && appearance.isImplicitExit( ) )
 						{
 							close( );
 						}
@@ -416,7 +518,7 @@ public class Application
 			}
 		}
 
-		return wrapper.value;
+		return wrapper.instance;
 	}
 
 	/**
@@ -453,36 +555,67 @@ public class Application
 		if ( isApplication( ) )
 		{
 			id = null;
-			context.stateChangeController = null;
 
 			get( ).unlock( );
 			lockFile = null;
 			lockFileChannel = null;
 			lock = null;
 
-			Context.instance = null;
-			context = null;
+			Substance.substance = null;
+			substance = null;
 
 			instanceWrapper = null;
 		}
 
 	}
-
+	
 	/**
-	 * Returns whether the inactive state has been entered. This is a cover
-	 * method for {@code getContext().getStateChangeController().getInactivityHandler().isInactive()}.
+	 * Directly restarts the current program and opens in a new process. After
+	 * executed the launch it terminates the old process.
 	 * 
-	 * @return whether the inactive state has been entered.
-	 * 
-	 * @see #setInactiveIntervalMinutes(int)
+	 * @param args The arguments for the application.
 	 */
-	public boolean isInactive( )
+	public void restart(String... args) // FIXME Merge to 'Application' class!!!!!
 	{
-		if(get().getContext().getStateChangeController().getInactivityHandler( ) != null)
-			return get().getContext().getStateChangeController().getInactivityHandler( ).isInactive( );
+		StringBuilder command = new StringBuilder();
+		command.append(System.getProperty("java.home") + File.separator + "bin" + File.separator + "java ");
 		
-		return false;
+		for (String jvmArg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+			command.append(jvmArg + " ");
+		}
+				
+		command.append("-cp ").append(ManagementFactory.getRuntimeMXBean().getClassPath()).append(" ");
+		command.append( getContext().getMainClassName() ).append(" ");
+
+		for (String arg : args) {
+			command.append(arg).append(" ");
+		}
+		
+		
+		// TODO Remove lock file before launching the new process!
+		try {
+			Runtime.getRuntime().exec(command.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.exit(0);
 	}
+
+//	/**
+//	 * Returns whether the inactive state has been entered. This is a cover
+//	 * method for {@code getContext().getStateChangeController().getInactivityHandler().isInactive()}.
+//	 * 
+//	 * @return whether the inactive state has been entered.
+//	 * 
+//	 * @see #setInactiveIntervalMinutes(int)
+//	 */
+//	public boolean isInactive( )
+//	{
+//		if(get().getContext().getStateChangeController().getInactivityHandler( ) != null)
+//			return get().getContext().getStateChangeController().getInactivityHandler( ).isInactive( );
+//		
+//		return false;
+//	}
 
 	
 
@@ -490,7 +623,7 @@ public class Application
 	 * Locks this application and marks it as a single instance application.
 	 * This prevents multiple instantiations of this program by creating a
 	 * temporary lock file. The path of this file depends on the current
-	 * {@link FileStorage}.
+	 * {@link Local}.
 	 * 
 	 * @return {@code true} if the application instance has been locked,
 	 *         otherwise {@code false}.
@@ -502,12 +635,16 @@ public class Application
 	{
 		try
 		{
-			if ( context.getFileStorage( ) != null )
+			if ( localStorage != null )
 			{
 				// TODO Name the file similar to the process id and when
 				// launching a second instance check if that process really
 				// exists.
-				lockFile = new File( context.getFileStorage( ).getDirectory( ) + File.separator + "Application.lock" );
+				
+				// FIXME Place lock file outside the storage so that it is not
+				// moved when the storage is moved to another path. That way the
+				// second launch is still able to check against that file.
+				lockFile = new File( localStorage.getDirectory( ) + File.separator + "Application.lock" );
 
 				if ( !lockFile.getParentFile( ).exists( ) )
 					lockFile.getParentFile( ).mkdirs( );
@@ -604,9 +741,30 @@ public class Application
 	 * 
 	 * @return The application context.
 	 */
-	public Context getContext( )
+	public Substance getContext( )
 	{
-		return context;
+		return substance;
+	}
+
+	public Local getLocalStorage( )
+	{
+		return localStorage;
+	}
+
+	public void setLocalStorage( Local local )
+	{
+		localStorage = local;
+	}
+
+	public Appearance getAppearance( )
+	{
+		return appearance;
+	}
+
+	@SuppressWarnings( "static-access" )
+	public void setAppearance( Appearance appearance )
+	{
+		this.appearance = appearance;
 	}
 
 	@Override

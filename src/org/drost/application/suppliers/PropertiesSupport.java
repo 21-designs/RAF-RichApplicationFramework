@@ -25,8 +25,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import org.drost.application.FileStorage;
-import org.drost.application.FileStorage.SaveAsConfiguration;
+import org.drost.application.Local;
+import org.drost.application.Local.SaveAsConfiguration;
 
 public class PropertiesSupport implements SaveAsConfiguration
 {
@@ -80,7 +80,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	}
 
 
-	public void save(FileStorage storage)
+	public void save(Local storage)
 	{
 		if(storage == null)
 			return;
@@ -109,7 +109,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	}
 	
 	
-	public void load(FileStorage storage)
+	public void load(Local storage)
 	{
 		if(storage == null)
 			return;
@@ -150,7 +150,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	public void deleteFile()
 	{
 		if(filepath != null)
-			FileStorage.delete(filepath);
+			Local.delete(filepath);
 	}
 	
 	
@@ -167,7 +167,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 		
 		if(new File(directoryPath).exists())
 		{
-			FileStorage.delete(directoryPath + filename);
+			Local.delete(directoryPath + filename);
 		}		
 	}
 	
