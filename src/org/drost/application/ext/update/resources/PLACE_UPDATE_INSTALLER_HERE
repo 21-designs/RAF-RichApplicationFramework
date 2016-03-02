@@ -1,0 +1,8 @@
+Place the update_installer.jar in the resource folder.
+
+In UpdateManager: 
+1. create a static field that initial stores the current jar file path. 
+2. When updating, check whether the initial path still contains the current jar file. (This may not be the case if it has been removed).
+3. If it is not contained in the initial folder, get the new jar file path.
+4. Run the update_installer.jar on the correct path of the current application (jar file).
+	- Therefore create a copy of the update_installer.jar in the applications execution path.
