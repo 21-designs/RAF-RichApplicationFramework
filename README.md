@@ -34,7 +34,7 @@ public class ApplicationExample
         // Your application logic here ...
         
         // Closes the application and shuts down the JVM
-        Application.exit();
+        Application.get().exit();
     }
 }
 ```
