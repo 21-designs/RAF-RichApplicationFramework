@@ -1,5 +1,4 @@
-Crafty
-======
+#Description
 
 A library for easily setting up your own Java applications. All done in a few lines of code. Beside providing classes to handle resources or even the applications data storage this library comes along with other several suppliers to reinstate the application state or even to control newer versions by updating the application packages.
 
