@@ -4,7 +4,7 @@ A library for easily setting up your own Java applications. All done in a few li
 
 Features
 --------
-- Support for command-line and GUI applicatins.
+- Support for command-line and GUI applications.
 - A Single application instance feature to prevent a second execution.
 - Checks if an appropriate Java version is installed, otherwise it will open a support website (http://java.com/download).
 - Handles local file and resource storage.
