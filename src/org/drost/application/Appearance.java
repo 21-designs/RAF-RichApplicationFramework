@@ -223,7 +223,7 @@ public class Appearance // Maybe Surface or Front
 	 */
 	public void setMainView(Window window)
 	{
-		if(hasMainView() && window != null)
+		if(hasMainView())
 			throw new IllegalStateException(ApplicationConstants.MESSAGE_VIEW_HAS_MAIN_VIEW);
 		
 		this.window = window;
