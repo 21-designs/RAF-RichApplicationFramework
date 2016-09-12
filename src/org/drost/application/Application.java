@@ -21,7 +21,6 @@ package org.drost.application;
 
 import java.awt.AWTEvent;
 import java.awt.Dialog;
-import java.awt.EventQueue;
 import java.awt.Frame;
 import java.awt.Toolkit;
 import java.awt.Window;
@@ -36,26 +35,29 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.util.Properties;
 
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.event.EventListenerList;
 
+import org.drost.application.listeners.ApplicationEvent;
+import org.drost.application.listeners.ApplicationListener;
+import org.drost.application.plaf.dawn.DawnLookAndFeel;
 import org.drost.application.suppliers.PropertiesSupport;
-import org.drost.utils.setup.PlatformUtils;
+import org.drost.application.utils.PlatformUtils;
 
 /**
  * A bundles of most common features related to a basic application.
  * 
  * <p>
  * This class is used for setting up and further more managing an applications
- * lifecycle.
+ * life cycle.
  * <ul>
  * <li>The {@code launch} method initializes the application instance. This is
  * only called once. This method is {@code static} and defines the main entry
  * point for the usage of the {@code Application} class.</li>
  * <li>{@code Application.get()} returns the current instance and gains access
  * to application related features. Most of them are bundled in the
- * {@link Substance} singleton. This includes handling resources, support for GUI
- * applications and defining application related properties.</li>
+ * {@link Substance} singleton. This includes handling resources, support for
+ * GUI applications and defining application related properties.</li>
  * <li>To shut down the application the {@code exit} methods is called. Beside
  * cleaning up any resources it also performs a check if the application is
  * allowed to shut down or.</li>
@@ -65,7 +67,7 @@ import org.drost.utils.setup.PlatformUtils;
  * <p>
  * To initialize an application simply call the
  * {@code Application.launch(String)} method. The following example shows a
- * basic lifecycle of every application setup:
+ * basic life cycle of every application setup:
  * 
  * <pre>
  * public class ApplicationExample
@@ -94,13 +96,16 @@ import org.drost.utils.setup.PlatformUtils;
  * constructor. This prevent subclasses to implement a public constructor and to
  * create multiple instances.
  * 
- * @author Yannick Drost (drost.yannick@googlemail.com)
+ * @author Yannick Drost
+ * @author <a href="mailto:drost.yannick@googlemail.com">drost.
+ *         yannick@googlemail.com</a>
  * @version 1.0
  * 
  * @see #launch(String)
- * @see #exit()
+ * @see #shutdown()
  *
  */
+// Rename to RichApplication
 public class Application // Implement 'Observable' or add event listener system
 {
 	/**
@@ -127,36 +132,55 @@ public class Application // Implement 'Observable' or add event listener system
 	 * @see Application#launch(String)
 	 * @see Application#getID()
 	 */
-	protected static String id = null;
-
-	private static File			lockFile		= null;
-	private static FileChannel	lockFileChannel	= null;
-	private static FileLock		lock			= null;
+	protected final String id;
 
 	/**
-	 * 
+	 * A list holding all the application listeners of type
+	 * {@code ApplicationListener}.
 	 */
-	private static Substance substance = null;
+	private EventListenerList applicationListeners;
+
+	/**
+	 * Temporary file that is created when ever the application is restarted.
+	 * Indicates a performed restart for the next process that will delete it
+	 * after the restart.
+	 */
+	private static File restartFile = null;
+
+	/**
+	 * The file name of the restart file. Does not contain an extension.
+	 */
+	private final static String RESTART_FILE_NAME = "restart-app";
+
+	private File		lockFile		= null;
+	private FileChannel	lockFileChannel	= null;
+	private FileLock	lock			= null;
 	
 	/**
-	 * 
+	 * The context of this application instance that stores some application
+	 * related content.
 	 */
-	private static Local localStorage;
-	
+	private Substance substance;
+
 	/**
-	 * 
+	 * Manages the application associated local storage.
 	 */
-	private static Appearance appearance;
+	private LocalStorage localStorage;
+
+	/**
+	 * Provides functionality to manage the application GUI.
+	 */
+	private Appearance appearance;
 
 	/**
 	 * Wraps the singleton instance and prevents the usage of double-checked
 	 * locking. The performance of this pattern is not necessarily better than
 	 * the {@code volatile} implementation.
 	 * 
-	 * @author kimschorat
+	 * @author Yannick Drost
 	 * @since 1.0
 	 */
-	private static class InstanceWrapper
+	protected static final class InstanceWrapper
 	{
 		/**
 		 * The singleton instance wrapped in this container class. Since it
@@ -184,23 +208,38 @@ public class Application // Implement 'Observable' or add event listener system
 	/**
 	 * Initializes the application instance by a unique identifier.
 	 */
-	private Application( String ID )
+	private Application( final String ID )
 	{
-		if ( isValidID( ID ) )
+		if( !isValidID( ID ) )
+			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
+
+		{
+			// Initializes the substance singleton.
+			substance = Substance.get( );
+
+			// Initializes the applications local storage.
+			try
+			{
+				localStorage = new LocalStorage( ID );
+			}
+			catch ( IOException e )
+			{
+				e.printStackTrace();
+			}
+
+			// Initializes the applications appearance.
+			appearance = new Appearance( );
+		}
+
 		{
 			id = ID;
-			
-			substance = Substance.get( );
-			
-			localStorage = new Local();
-			
-			appearance = new Appearance();
+
+			// Initializes the application listeners list.
+			applicationListeners = new EventListenerList( );
+
+			restartFile = new File( localStorage.getDirectory( ) + File.separator + RESTART_FILE_NAME );
 		}
-		else
-		{
-			id = null; // While uncaught exceptions are caught and ignored.
-			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
-		}
+
 	}
 
 	/**
@@ -209,9 +248,9 @@ public class Application // Implement 'Observable' or add event listener system
 	 * @return Whether the application has been initialized.
 	 * @see #get()
 	 */
-	public static boolean isApplication( )
+	public static boolean running( )
 	{
-		if ( instanceWrapper == null )
+		if( instanceWrapper == null )
 			return false;
 		else
 			return ( instanceWrapper.instance != null );
@@ -219,7 +258,8 @@ public class Application // Implement 'Observable' or add event listener system
 
 	/**
 	 * Checks whether this given application identifier is valid, means if the
-	 * ID is not {@code null} and has a length > 0.
+	 * ID is not {@code null} and has a length > 0. Further more there are some
+	 * invalid symbols which are not allowed in the identifier.
 	 * 
 	 * @param appID
 	 *            The unique identifier for this application instance.
@@ -228,11 +268,15 @@ public class Application // Implement 'Observable' or add event listener system
 	 */
 	public static boolean isValidID( String appID )
 	{
-		// final char invalidSymbols = {'\', '/', ':', '*', '?', '"', '<', '>',
-		// '|'};
+		final String[] invalidSymbols = { "\\", "/", ":", "*", "?", "\"", "<", ">", "|" };
 
-		if ( appID != null && appID.length( ) != 0 )
+		if( appID != null && appID.length( ) != 0 )
 		{
+			for( String s : invalidSymbols )
+			{
+				if( appID.contains( s ) )
+					return false;
+			}
 			return true;
 		}
 		else
@@ -249,9 +293,9 @@ public class Application // Implement 'Observable' or add event listener system
 	 * @throw IllegalStateException If the application has not been initialized
 	 *        yet.
 	 */
-	public static String getID( )
+	public String getID( )
 	{
-		if ( id == null )
+		if( id == null )
 			throw new IllegalStateException( "No ID available. The application needs to be initialized." );
 		return id;
 	}
@@ -267,7 +311,7 @@ public class Application // Implement 'Observable' or add event listener system
 	 */
 	public static Application get( )
 	{
-		if ( Application.isApplication( ) )
+		if( Application.running( ) )
 		{
 			return instanceWrapper.instance;
 		}
@@ -302,78 +346,102 @@ public class Application // Implement 'Observable' or add event listener system
 	 */
 	public static synchronized Application launch( final String ID )
 	{
-		if ( Application.isApplication( ) )
+		if( Application.running( ) )
 			throw new RuntimeException( ApplicationConstants.MESSAGE_APPLICATION_ALREADY_INITIALIZED );
 
-		if ( !isValidID( ID ) )
+		if( !isValidID( ID ) )
 			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
 
-
 		create( ID );
-		
-//		substance = Substance.get( );
-		
-//		DefaultInactivityHandler inactiveHandler = new DefaultInactivityHandler();
-//		inactiveHandler.registerHandler( );
-//		app.getContext( ).getStateChangeController( ).setInactivityHandler( inactiveHandler );
+
+		// Fires an application restarted event.
+		if( restarted( ) )
+		{
+			get( ).fireApplicationRestarted( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_RESTARTED ) );
+		}
+
+		// substance = Substance.get( );
+
+//		 DefaultInactivityHandler inactiveHandler = new
+//		 DefaultInactivityHandler();
+//		 inactiveHandler.registerHandler( );
+//		 app.getContext( ).getStateChangeController( ).setInactivityHandler(
+//		 inactiveHandler );
 //		
 //		
-//		DefaultExceptionHandler exceptionHandler = new DefaultExceptionHandler();
-//		exceptionHandler.registerHandler( );
-//		app.getContext( ).getStateChangeController( ).setExceptionHandler( exceptionHandler );
-		
+//		 DefaultExceptionHandler exceptionHandler = new
+//		 DefaultExceptionHandler();
+//		 exceptionHandler.registerHandler( );
+//		 app.getContext( ).getStateChangeController( ).setExceptionHandler(
+//		 exceptionHandler );
+
+		Substance substance = get( ).getSubstance( );
+		LocalStorage localStorage = get( ).getLocalStorage( );
+		Appearance appearance = get( ).getAppearance( );
+
 		PropertiesSupport ps = substance.getPropertiesSupport( );
-		
+
 		if( localStorage.containsFile( localStorage.getDirectoryFor( PropertiesSupport.class ), ps.getFilename( ) ) )
 		{
-			// Check for preset properties to automatically initialize the application instance.
+			// Check for preset properties to automatically initialize the
+			// application instance.
 			ps.load( localStorage );
-			
+
 			Properties p = ps.getProperties( );
-			
-			if(!p.getProperty( "lookandfeel" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ))
+
+			if( !p.getProperty( "lookandfeel" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ) )
 			{
 				String property = p.getProperty( "lookandfeel" );
+				
 				try
 				{
-					if( property != null )
+					if( property != null && !property.equals( "" ))
+					{
+						if( property == "auto" )
+							property = DawnLookAndFeel.class.getCanonicalName();
+						
 						appearance.setLookAndFeel( property );
+					}
+					
 				}
 				catch ( Exception e )
 				{
 					String name = UIManager.getSystemLookAndFeelClassName( );
+					
 					try
 					{
 						appearance.setLookAndFeel( name );
 					}
 					catch ( Exception ignore )
 					{
-
+						// Could not set the default LookAndFeel
 					}
 				}
 			}
-			
-			if(!p.getProperty( "title" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ))
+
+			// FIXME Doesn't has any main view at this point
+			if( !p.getProperty( "title" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ) )
 			{
 				String property = p.getProperty( "title" );
-				if(appearance.hasMainView( ))
+				if( appearance.hasMainView( ) )
 				{
 					Window w = appearance.getMainView( );
-					
-					if(w instanceof Frame)
+
+					if( w instanceof Frame )
 						( (Frame) w ).setTitle( property );
-					
-					if(w instanceof Dialog)
+
+					if( w instanceof Dialog )
 						( (Dialog) w ).setTitle( property );
 				}
 			}
-			
+
 		}
 		else
 		{
-			// Create some default properties to improve the next application launching.
+			// Create some default properties to improve the next application
+			// launching.
 			Properties p = ps.getProperties( );
-			
+
 			p.setProperty( "name", PropertiesSupport.PROPERTY_UNDEFINED );
 			p.setProperty( "author", PropertiesSupport.PROPERTY_UNDEFINED );
 			p.setProperty( "publisher", PropertiesSupport.PROPERTY_UNDEFINED );
@@ -387,48 +455,67 @@ public class Application // Implement 'Observable' or add event listener system
 
 			p.setProperty( "title", PropertiesSupport.PROPERTY_UNDEFINED );
 			p.setProperty( "lookandfeel", PropertiesSupport.PROPERTY_UNDEFINED );
-			
-			// p.setProperty( "database", PropertiesService.PROPERTY_UNDEFINED ); Support database connection
-			// p.setProperty( "dbuser", PropertiesService.PROPERTY_UNDEFINED ); Support database connection
-			// p.setProperty( "dbpass", PropertiesService.PROPERTY_UNDEFINED ); Support database connection
-			
-			// p.setProperty( "sessionuser", PropertiesService.PROPERTY_UNDEFINED ); Support user session
-			// p.setProperty( "sessionpass", PropertiesService.PROPERTY_UNDEFINED ); Support user session
-			
 
-			ps.save( localStorage );
+			// p.setProperty( "database", PropertiesService.PROPERTY_UNDEFINED
+			// ); Support database connection
+			// p.setProperty( "dbuser", PropertiesService.PROPERTY_UNDEFINED );
+			// Support database connection
+			// p.setProperty( "dbpass", PropertiesService.PROPERTY_UNDEFINED );
+			// Support database connection
+
+			// p.setProperty( "sessionuser",
+			// PropertiesService.PROPERTY_UNDEFINED ); Support user session
+			// p.setProperty( "sessionpass",
+			// PropertiesService.PROPERTY_UNDEFINED ); Support user session
+
+			// Saving this file to the storage makes it persistent and
+			// prevents it from removing after shutdown.
+			 ps.save( localStorage );
 		}
-		
+
 		/*
 		 * Adds a global window event listener to the EDT. This is used to shut
 		 * down the application while implicit exit, meaning when the last
 		 * window is closed the application exits.
 		 */
 		long eventMask = AWTEvent.WINDOW_EVENT_MASK;
-
-		Toolkit.getDefaultToolkit( ).addAWTEventListener( new AWTEventListener( )
+		
+		AWTEventListener listener = new AWTEventListener( )
 		{
+			int visibleWindows = 0;
+			
 			public void eventDispatched( AWTEvent e )
-			{
-				if ( e.equals( WindowEvent.WINDOW_CLOSING ) )
+			{				
+				if( e.getID( ) == ( WindowEvent.WINDOW_CLOSING ) )
 				{
-					System.out.println( "Window closed." );
+					visibleWindows--;
 
-					if ( Window.getWindows( ).length == 0 )
+					if(visibleWindows == 0 && substance != null && appearance != null && appearance.isImplicitExit( ))
 					{
-						System.out.println( "Last window closed." );
-
-						if ( substance != null && appearance != null && appearance.isImplicitExit( ) )
-						{
-							close( );
-						}
+						get().shutdown( );
 					}
+				}
+				
+				if( e.getID( ) == ( WindowEvent.WINDOW_OPENED ) )
+				{
+					visibleWindows++;
 				}
 
 			}
-		}, eventMask );
+		};
 
+		Toolkit.getDefaultToolkit( ).addAWTEventListener( listener, eventMask );
 
+		Runtime.getRuntime( ).addShutdownHook( new Thread( )
+		{
+			public void run( )
+			{
+				if( Application.running( ) )
+					get( ).close( );
+			}
+		} );
+
+		
 		/*
 		 * Not used yet
 		 */
@@ -439,54 +526,56 @@ public class Application // Implement 'Observable' or add event listener system
 		// // Application needs to be singed.
 		// }
 
+		get().fireApplicationLaunched( new ApplicationEvent( get(), ApplicationEvent.APPLICATION_LAUNCHED ) );
+		
 		return Application.get( );
 	}
 
-	/**
-	 * This is a cover for {@link #launch(String)} method in which the whole
-	 * initialization is run on the EventDispatchThread. While the current
-	 * thread is not the DispatchThread this is done by
-	 * {@link SwingUtilities#invokeAndWait(Runnable)}.
-	 * 
-	 * @param ID
-	 *            The unique identifier.
-	 * @return The application instance.
-	 * 
-	 * @see #launch(String)
-	 */
-	@Deprecated // FIXME Only needed if there is code that runs on the EDT. If
-				// the user implements an abstract method for example.
-	public static Application launchOnEDT( String ID )
-	{
-		/*
-		 * While the current thread is not the DispatchThread and the
-		 * initialization of this application includes any GUI manipulation use
-		 * SwingUtilities.invokeAndWait(...)
-		 */
-		if ( EventQueue.isDispatchThread( ) )
-		{
-			return launch( ID );
-		}
-		else
-		{
-			try
-			{
-				SwingUtilities.invokeAndWait( new Runnable( )
-				{
-					public void run( )
-					{
-						launch( ID );
-					}
-				} );
-			}
-			catch ( Exception e )
-			{
-				throw new RuntimeException( e );
-			}
-		}
-
-		return get( );
-	}
+	// /**
+	// * This is a cover for {@link #launch(String)} method in which the whole
+	// * initialization is run on the EventDispatchThread. While the current
+	// * thread is not the DispatchThread this is done by
+	// * {@link SwingUtilities#invokeAndWait(Runnable)}.
+	// *
+	// * @param ID
+	// * The unique identifier.
+	// * @return The application instance.
+	// *
+	// * @see #launch(String)
+	// */
+	// @Deprecated // Only needed if there is code that runs on the EDT. If
+	// // the user implements an abstract method for example.
+	// public static Application launchOnEDT( String ID )
+	// {
+	// /*
+	// * While the current thread is not the DispatchThread and the
+	// * initialization of this application includes any GUI manipulation use
+	// * SwingUtilities.invokeAndWait(...)
+	// */
+	// if ( EventQueue.isDispatchThread( ) )
+	// {
+	// return launch( ID );
+	// }
+	// else
+	// {
+	// try
+	// {
+	// SwingUtilities.invokeAndWait( new Runnable( )
+	// {
+	// public void run( )
+	// {
+	// launch( ID );
+	// }
+	// } );
+	// }
+	// catch ( Exception e )
+	// {
+	// throw new RuntimeException( e );
+	// }
+	// }
+	//
+	// return get( );
+	// }
 
 	/**
 	 * Creates the singleton instance in the most safest way. This ensures that
@@ -505,11 +594,11 @@ public class Application // Implement 'Observable' or add event listener system
 	{
 		InstanceWrapper wrapper = instanceWrapper;
 
-		if ( wrapper == null )
+		if( wrapper == null )
 		{
 			synchronized ( Application.class )
 			{
-				if ( instanceWrapper == null )
+				if( instanceWrapper == null )
 				{
 					Application instance = new Application( ID );
 					instanceWrapper = new InstanceWrapper( instance );
@@ -522,108 +611,149 @@ public class Application // Implement 'Observable' or add event listener system
 	}
 
 	/**
+	 * Checks whether the application launches after a restart has been
+	 * initiated.
+	 * 
+	 * @return
+	 */
+	private static boolean restarted( )
+	{
+		if( restartFile.exists( ) )
+		{
+			restartFile.delete( );
+			return true;
+		}
+		else
+			return false;
+	}
+
+	/**
 	 * Gracefully shuts down the application and closes the JVM. This method is
 	 * used to free resources as well as to check if the application is able to
 	 * exit or whether there are untreated dependencies.
 	 */
-	public static boolean close( )
+	public void shutdown( )
 	{
-		if ( isApplication( ) )
-		{
-			// Check if application is able or allowed to exit
-
-			// Close streams and free resources
-
-		}
-		return true;
-	}
-
-	/**
-	 * Shuts down the JVM immediately.
-	 */
-	public static void exit( )
-	{
+		close();
+		
 		Runtime.getRuntime( ).exit( 0 );
 	}
+	
+	
+	/**
+	 * 
+	 */
+	private void close( )
+	{
+		get( ).fireApplicationClosed( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_CLOSED ) );
+		
+		// Check if application is able or allowed to exit
+
+		// Close streams and free resources
+		instanceWrapper = null;
+		Substance.substance = null;
+		
+		applicationListeners = null;
+	}
+
 
 	/**
 	 * This method is basically used for tests to reset a previously initialized
 	 * application instance.
 	 */
-	static void reset( )
+	void reset( )
 	{
-		if ( isApplication( ) )
+		if( running( ) )
 		{
-			id = null;
+			// id = null;
 
-			get( ).unlock( );
+			if( get( ).isLocked( ) )
+				get( ).unlock( );
 			lockFile = null;
 			lockFileChannel = null;
 			lock = null;
 
 			Substance.substance = null;
-			substance = null;
+			// substance = null;
 
 			instanceWrapper = null;
 		}
 
 	}
-	
+
 	/**
 	 * Directly restarts the current program and opens in a new process. After
 	 * executed the launch it terminates the old process.
+	 * <p>
+	 * This method has a synchronized modifier due to it creates a temporary 
+	 * file to indicate a performed restart for the next application launch.
 	 * 
-	 * @param args The arguments for the application.
+	 * @param args
+	 *            The arguments for the application.
 	 */
-	public void restart(String... args) // FIXME Merge to 'Application' class!!!!!
+	public synchronized void restart( String... args )
 	{
-		StringBuilder command = new StringBuilder();
-		command.append(System.getProperty("java.home") + File.separator + "bin" + File.separator + "java ");
-		
-		for (String jvmArg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
-			command.append(jvmArg + " ");
-		}
-				
-		command.append("-cp ").append(ManagementFactory.getRuntimeMXBean().getClassPath()).append(" ");
-		command.append( getContext().getMainClassName() ).append(" ");
+		StringBuilder command = new StringBuilder( );
+		command.append( System.getProperty( "java.home" ) + File.separator + "bin" + File.separator + "java " );
 
-		for (String arg : args) {
-			command.append(arg).append(" ");
+		for( String jvmArg : ManagementFactory.getRuntimeMXBean( ).getInputArguments( ) )
+		{
+			command.append( jvmArg + " " );
 		}
-		
-		
+
+		command.append( "-cp " ).append( ManagementFactory.getRuntimeMXBean( ).getClassPath( ) ).append( " " );
+		command.append( ApplicationProfiler.getProfiler( ).getMainClassName( ) ).append( " " );
+
+		for( String arg : args )
+		{
+			command.append( arg ).append( " " );
+		}
+
 		// TODO Remove lock file before launching the new process!
-		try {
-			Runtime.getRuntime().exec(command.toString());
-		} catch (IOException e) {
-			e.printStackTrace();
+		try
+		{
+			// Creates a temporary file that indicates a restart
+			if( restartFile.createNewFile( ) )
+				Runtime.getRuntime( ).exec( command.toString( ) );
+			else
+			{
+				restartFile.delete( );
+				throw new IllegalStateException(
+						"Couldn't restart the application. There already exists a restart file." );
+			}
 		}
-		System.exit(0);
+		catch ( IOException e )
+		{
+			e.printStackTrace( );
+		}
+		System.exit( 0 );
 	}
 
-//	/**
-//	 * Returns whether the inactive state has been entered. This is a cover
-//	 * method for {@code getContext().getStateChangeController().getInactivityHandler().isInactive()}.
-//	 * 
-//	 * @return whether the inactive state has been entered.
-//	 * 
-//	 * @see #setInactiveIntervalMinutes(int)
-//	 */
-//	public boolean isInactive( )
-//	{
-//		if(get().getContext().getStateChangeController().getInactivityHandler( ) != null)
-//			return get().getContext().getStateChangeController().getInactivityHandler( ).isInactive( );
-//		
-//		return false;
-//	}
-
-	
+	// /**
+	// * Returns whether the inactive state has been entered. This is a cover
+	// * method for {@code
+	// getContext().getStateChangeController().getInactivityHandler().isInactive()}.
+	// *
+	// * @return whether the inactive state has been entered.
+	// *
+	// * @see #setInactiveIntervalMinutes(int)
+	// */
+	// public boolean isInactive( )
+	// {
+	// if(get().getContext().getStateChangeController().getInactivityHandler( )
+	// != null)
+	// return
+	// get().getContext().getStateChangeController().getInactivityHandler(
+	// ).isInactive( );
+	//
+	// return false;
+	// }
 
 	/**
 	 * Locks this application and marks it as a single instance application.
 	 * This prevents multiple instantiations of this program by creating a
 	 * temporary lock file. The path of this file depends on the current
-	 * {@link Local}.
+	 * {@link LocalStorage}.
 	 * 
 	 * @return {@code true} if the application instance has been locked,
 	 *         otherwise {@code false}.
@@ -631,68 +761,78 @@ public class Application // Implement 'Observable' or add event listener system
 	 * @throws RuntimeException
 	 */
 	@SuppressWarnings( "resource" )
-	public boolean lockInstance( )
+	public boolean lockInstance( boolean b )
 	{
-		try
+		if(!b)
 		{
-			if ( localStorage != null )
-			{
-				// TODO Name the file similar to the process id and when
-				// launching a second instance check if that process really
-				// exists.
-				
-				// FIXME Place lock file outside the storage so that it is not
-				// moved when the storage is moved to another path. That way the
-				// second launch is still able to check against that file.
-				lockFile = new File( localStorage.getDirectory( ) + File.separator + "Application.lock" );
-
-				if ( !lockFile.getParentFile( ).exists( ) )
-					lockFile.getParentFile( ).mkdirs( );
-			}
-			else
-			{
-				throw new NullPointerException(
-						"Storage needs to be initialized before you can register an instance." );
-			}
-
-			// TODO getAllProcesses() returns null! System.out.println(
-			// ProcessProfiler.isProcessRunning(ProcessProfiler.getProcessId())
-			// );
-
-			lockFileChannel = new RandomAccessFile( lockFile, "rw" ).getChannel( );
-
+			return unlock();
+		}
+		else
+		{
 			try
 			{
-				lock = lockFileChannel.tryLock( );
-			}
-			catch ( OverlappingFileLockException e )
-			{
-				e.printStackTrace( );
-			}
-
-			if ( lock == null )
-			{
-				lockFileChannel.close( );
-				throw new RuntimeException( "Only one instance of this program can be run at the same time." );
-			}
-
-			Thread shutdown = new Thread( new Runnable( )
-			{
-				@Override
-				public void run( )
+				if( localStorage != null )
 				{
-					unlock( );
+					// TODO Name the file similar to the process id and when
+					// launching a second instance check if that process really
+					// exists. This should avoid blocking a launch while the 
+					// previous one was not shut down properly.
+
+					// FIXME Place lock file outside the storage so that it is not
+					// moved when the storage is moved to another path. That way the
+					// second launch is still able to check against that file.
+					lockFile = new File( localStorage.getDirectory( ) + File.separator + "Application.lock" );
+
+					if( !lockFile.getParentFile( ).exists( ) )
+						lockFile.getParentFile( ).mkdirs( );
 				}
-			} );
+				else
+				{
+					throw new NullPointerException(
+							"Storage needs to be initialized before you can register an instance." );
+				}
 
-			Runtime.getRuntime( ).addShutdownHook( shutdown );
-		}
-		catch ( IOException e )
-		{
-			throw new RuntimeException( "Could not start process", e );
-		}
+				// TODO getAllProcesses() returns null! System.out.println(
+				// ProcessProfiler.isProcessRunning(ProcessProfiler.getProcessId())
+				// );
 
-		return true;
+				lockFileChannel = new RandomAccessFile( lockFile, "rw" ).getChannel( );
+
+				try
+				{
+					lock = lockFileChannel.tryLock( );
+				}
+				catch ( OverlappingFileLockException e )
+				{
+					e.printStackTrace( );
+				}
+
+				if( lock == null )
+				{
+					lockFileChannel.close( );
+					throw new RuntimeException( "Only one instance of this program can be run at the same time." );
+				}
+
+				Thread shutdown = new Thread( new Runnable( )
+				{
+					@Override
+					public void run( )
+					{
+						unlock( );
+					}
+				} );
+
+				Runtime.getRuntime( ).addShutdownHook( shutdown );
+			}
+			catch ( IOException e )
+			{
+				throw new RuntimeException( "Could not lock process", e );
+			}
+
+			fireApplicationLocked( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_LOCKED ) );
+			return true;
+		}
+		
 	}
 
 	/**
@@ -703,9 +843,9 @@ public class Application // Implement 'Observable' or add event listener system
 	 */
 	public boolean isLocked( )
 	{
-		if ( lockFile == null )
+		if( lockFile == null )
 			return false;
-		
+
 		return ( lockFile.exists( ) && lock != null );
 	}
 
@@ -715,65 +855,180 @@ public class Application // Implement 'Observable' or add event listener system
 	 * 
 	 * @throws IOException
 	 */
-	public void unlock( )
+	private boolean unlock( )
 	{
 		try
 		{
-			if ( lock != null )
+			if( lock != null )
 				lock.release( );
 
-			if ( lockFileChannel != null )
+			if( lockFileChannel != null )
 				lockFileChannel.close( );
 
-			if ( lockFile != null )
+			if( lockFile != null )
 				lockFile.delete( );
+
+			fireApplicationUnlocked( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_UNLOCKED ) );
+			
+			return true;
 		}
 		catch ( IOException ignore )
 		{
 			// Nothing
 		}
 
+		return false;
 	}
 
 	/**
-	 * Return the application context that groups several application related
-	 * property types.
+	 * Returns the application context that groups several application related
+	 * properties.
 	 * 
 	 * @return The application context.
 	 */
-	public Substance getContext( )
+	public Substance getSubstance( )
 	{
 		return substance;
 	}
 
-	public Local getLocalStorage( )
+	/**
+	 * Returns the application data storage that provides access to the
+	 * associated local data.
+	 * 
+	 * @return The local storage instance.
+	 */
+	public LocalStorage getLocalStorage( )
 	{
 		return localStorage;
 	}
 
-	public void setLocalStorage( Local local )
+	/**
+	 * Sets the local storage field. Thus the local storage can be quickly
+	 * exchanged and be swapped between other storages.
+	 * 
+	 * @param local
+	 *            The new local storage.
+	 */
+	public void setLocalStorage( LocalStorage local )
 	{
 		localStorage = local;
 	}
 
+	/**
+	 * Returns the appearance object handling the main view of the underlying
+	 * application.
+	 * 
+	 * @return The appearance object holding viewable data.
+	 */
 	public Appearance getAppearance( )
 	{
 		return appearance;
 	}
 
-	@SuppressWarnings( "static-access" )
+	/**
+	 * Sets the appearance field.
+	 * 
+	 * @param appearance
+	 *            The new appearance object.
+	 */
 	public void setAppearance( Appearance appearance )
 	{
 		this.appearance = appearance;
 	}
 
+	//////////////////////////////////////////////////////////////////////////////
+	//
+	// Eventlistener
+	//
+	//////////////////////////////////////////////////////////////////////////////
+
+	public ApplicationListener[] getApplicationListeners( )
+	{
+		return applicationListeners.getListeners( ApplicationListener.class );
+	}
+
+	public void addApplicationListener( ApplicationListener listener )
+	{
+		applicationListeners.add( ApplicationListener.class, listener );
+	}
+
+	public void removeApplicationListener( ApplicationListener listener )
+	{
+		applicationListeners.remove( ApplicationListener.class, listener );
+	}
+
+	protected void fireApplicationLaunched( ApplicationEvent e )
+	{
+		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
+
+		for( ApplicationListener l : listeners )
+		{
+			l.applicationLaunched( e );
+		}
+	}
+
+	protected void fireApplicationClosed( ApplicationEvent e )
+	{
+		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
+
+		for( ApplicationListener l : listeners )
+		{
+			l.applicationClosed( e );
+		}
+	}
+
+	protected void fireApplicationUpdated( ApplicationEvent e )
+	{
+		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
+
+		for( ApplicationListener l : listeners )
+		{
+			l.applicationUpdated( e );
+		}
+	}
+
+	protected void fireApplicationLocked( ApplicationEvent e )
+	{
+		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
+
+		for( ApplicationListener l : listeners )
+		{
+			l.applicationLocked( e );
+		}
+	}
+
+	protected void fireApplicationUnlocked( ApplicationEvent e )
+	{
+		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
+
+		for( ApplicationListener l : listeners )
+		{
+			l.applicationUnlocked( e );
+		}
+	}
+
+	protected void fireApplicationRestarted( ApplicationEvent e )
+	{
+		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
+
+		for( ApplicationListener l : listeners )
+		{
+			l.applicationRestarted( e );
+		}
+	}
+
+	/**
+	 * Sums several information describing this application instance.
+	 * 
+	 * @return A string describing the associated application instance.
+	 */
 	@Override
 	public String toString( )
 	{
 		StringBuffer sb = new StringBuffer( );
 		sb.append( this.getClass( ).getName( ) );
 
-		sb.append( " id=" + id + " locked=" + isLocked( ) + " lockfile=" + lockFile + " platform=" + PlatformUtils.OS );
+		sb.append( " id=" + id + " locked=" + isLocked( ) + " platform=" + PlatformUtils.OS );
 		return sb.toString( );
 	}
 }

@@ -30,8 +30,8 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.Preferences;
 
-import org.drost.application.Local;
-import org.drost.utils.arrays.ByteArrayUtils;
+import org.drost.application.LocalStorage;
+import org.drost.application.utils.ByteArrayUtils;
 
 /**
  * 
@@ -292,7 +292,7 @@ public class PreferencesSupport
 	}
 	
 	
-	public void save(Local storage)
+	public void save(LocalStorage storage)
 	{
 		if(storage == null)
 			return;
@@ -300,7 +300,7 @@ public class PreferencesSupport
 	}
 	
 	
-	public void save(String dirPath)
+	protected void save(String dirPath)
 	{
 		try
 		{
@@ -317,7 +317,7 @@ public class PreferencesSupport
 	}
 	
 	
-	public void load(Local storage)
+	public void load(LocalStorage storage)
 	{
 		if(storage == null)
 			return;
@@ -325,7 +325,7 @@ public class PreferencesSupport
 	}
 	
 	
-	public void load(String dirPath)
+	protected void load(String dirPath)
 	{
 		try
 		{

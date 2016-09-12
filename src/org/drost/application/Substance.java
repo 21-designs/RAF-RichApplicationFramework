@@ -23,8 +23,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.Map;
 
-import org.drost.application.handler.conflict.AbstractExceptionHandler;
-import org.drost.application.handler.conflict.AbstractInactivityHandler;
+import org.drost.application.conflict.AbstractExceptionHandler;
+import org.drost.application.conflict.AbstractInactivityHandler;
 import org.drost.application.suppliers.PreferencesSupport;
 import org.drost.application.suppliers.PropertiesSupport;
 
@@ -43,6 +43,7 @@ import org.drost.application.suppliers.PropertiesSupport;
  * @since 1.0
  *
  */
+@Deprecated // All but the service classes has been implemented by ApplicationProfiler 
 public class Substance // Or maybe Content
 {
 	/**
@@ -81,7 +82,7 @@ public class Substance // Or maybe Content
 	 * Creates a new context and initializes all class fields.
 	 * 
 	 * @see PreferencesSupport
-	 * @see Local
+	 * @see LocalStorage
 	 * @see Appearance
 	 * @see PreloaderSupport
 	 */
@@ -334,7 +335,7 @@ public class Substance // Or maybe Content
 	{
 		exceptionHandler = handler;
 		if ( !exceptionHandler.isRegistered( ) )
-			exceptionHandler.registerHandler( );
+			exceptionHandler.register( );
 	}
 
 	/**
@@ -357,7 +358,7 @@ public class Substance // Or maybe Content
 	{
 		inactiveHandler = handler;
 		if ( !inactiveHandler.isRegistered( ) )
-			inactiveHandler.registerHandler( );
+			inactiveHandler.register( );
 	}
 
 	// public void setPreferencesService(PreferencesService preferencesService)

@@ -25,8 +25,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import org.drost.application.Local;
-import org.drost.application.Local.SaveAsConfiguration;
+import org.drost.application.LocalStorage;
+import org.drost.application.interfaces.SaveAsConfiguration;
 
 public class PropertiesSupport implements SaveAsConfiguration
 {
@@ -80,7 +80,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	}
 
 
-	public void save(Local storage)
+	public void save(LocalStorage storage)
 	{
 		if(storage == null)
 			return;
@@ -88,7 +88,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	}
 	
 	
-	public void save(String directoryPath)
+	private void save(String directoryPath)
 	{
 	    try 
 	    {
@@ -109,7 +109,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	}
 	
 	
-	public void load(Local storage)
+	public void load(LocalStorage storage)
 	{
 		if(storage == null)
 			return;
@@ -117,7 +117,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 	}
 
 	
-	public void load(String directoryPath)
+	private void load(String directoryPath)
 	{
 		try
 		{
@@ -147,15 +147,19 @@ public class PropertiesSupport implements SaveAsConfiguration
 	 * 
 	 * @see File#delete()
 	 */
-	public void deleteFile()
+	public boolean deleteFile()
 	{
 		if(filepath != null)
-			Local.delete(filepath);
+			return LocalStorage.implicitDelete(filepath);
+		return false;
 	}
 	
 	
-	
-	public void deleteFile(String directoryPath)
+	/**
+	 * 
+	 * @param directoryPath
+	 */
+	protected void deleteFile(String directoryPath)
 	{
 		if(directoryPath == null)
 			return;
@@ -167,7 +171,7 @@ public class PropertiesSupport implements SaveAsConfiguration
 		
 		if(new File(directoryPath).exists())
 		{
-			Local.delete(directoryPath + filename);
+			LocalStorage.implicitDelete(directoryPath + filename);
 		}		
 	}
 	
