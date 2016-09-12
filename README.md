@@ -1,11 +1,10 @@
-Crafty
-======
+#Description
 
 A library for easily setting up your own Java applications. All done in a few lines of code. Beside providing classes to handle resources or even the applications data storage this library comes along with other several suppliers to reinstate the application state or even to control newer versions by updating the application packages.
 
 Features
 --------
-- Support for command-line and GUI applicatins.
+- Support for command-line and GUI applications.
 - A Single application instance feature to prevent a second execution.
 - Checks if an appropriate Java version is installed, otherwise it will open a support website (http://java.com/download).
 - Handles local file and resource storage.
@@ -34,7 +33,7 @@ public class ApplicationExample
         // Your application logic here ...
         
         // Closes the application and shuts down the JVM
-        Application.exit();
+        Application.get().exit();
     }
 }
 ```

@@ -294,6 +294,12 @@ public class Appearance // Maybe Surface or Front
 	 */
 	public void setMainView(Window window)
 	{
+<<<<<<< HEAD
+=======
+		if(hasMainView())
+			throw new IllegalStateException(ApplicationConstants.MESSAGE_VIEW_HAS_MAIN_VIEW);
+		
+>>>>>>> master
 		this.window = window;
 		
 		if( Application.running( ) )
