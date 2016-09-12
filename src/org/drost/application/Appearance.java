@@ -19,16 +19,33 @@
  */
 package org.drost.application;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.Window;
+import java.awt.event.ComponentListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 
+import javax.swing.FocusManager;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.LookAndFeel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+
+import org.drost.application.adapter.EdgeSnapAdapter;
+import org.drost.application.adapter.KeyControlAdapter;
+import org.drost.application.plaf.dawn.DawnLookAndFeel;
+import org.drost.application.session.UIPersistenceManager;
 
 /**
  * Holds the main window of the current application and provides several
@@ -44,16 +61,19 @@ public class Appearance // Maybe Surface or Front
 	
 	private static boolean implicitExit = false;
 	
-//	protected Window about = null;
+	private final EdgeSnapAdapter edgeSnapAdapter;
 	
-//	final JDialog defaultAbout = null;
+	// A input blocking component that hides other applications except this one.
+	private final JFrame standalone;
+	private HashMap<Window, Boolean> windowOnTopState = new HashMap<Window, Boolean>();
+	
 	
 	/**
 	 * Creates a new view to handle viewable application content.
 	 */
 	public Appearance()
 	{
-		window = null;
+		this(null);
 	}
 	
 	
@@ -67,7 +87,34 @@ public class Appearance // Maybe Surface or Front
 	 */
 	public Appearance(Window window)
 	{
-		this.setMainView(window);
+		if(window != null)
+			this.setMainView(window);
+		else
+			this.window = window;
+		
+		edgeSnapAdapter = new EdgeSnapAdapter();
+		
+		standalone = new JFrame();
+		standalone.getContentPane( ).setBackground( Color.BLACK );
+		standalone.setFocusable( false );
+		standalone.setFocusableWindowState( false );
+		standalone.setUndecorated( true );
+		standalone.setExtendedState(JFrame.MAXIMIZED_BOTH); 
+		standalone.addWindowListener( new WindowAdapter() {
+			@Override
+			public void windowActivated(WindowEvent e)
+			{
+				standalone.toBack( );
+			}
+		});
+		
+		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
+		GraphicsDevice gd = ge.getDefaultScreenDevice( );
+		
+		if( gd.isWindowTranslucencySupported( GraphicsDevice.WindowTranslucency.TRANSLUCENT ) )
+		{
+			standalone.setOpacity(0.70f);
+		}
 	}
 	
 	
@@ -116,6 +163,89 @@ public class Appearance // Maybe Surface or Front
 	
 	
 	/**
+	 * Initializes the window object and sets some default parameters.
+	 * 
+	 * @param window
+	 * @param size
+	 * @param title
+	 * @return
+	 */
+	@Deprecated
+	public <T extends Window> T initializeMainView( T window, Dimension size, String title)
+	{
+		if(window == null)
+			return null;
+		
+		window.setSize( size );
+		window.setLocationRelativeTo( null );
+		if(window instanceof Frame )
+		{
+			( (Frame) window ).setTitle(title);
+		}
+		
+		if(window instanceof JFrame)
+		{
+			( (JFrame) window ).setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+		}
+		
+		if(window instanceof Dialog)
+		{
+			( (Dialog) window ).setTitle(title);
+		}
+		
+		return window;
+	}
+	
+	
+	/**
+	 * Creates a main view and initializes the instance. Additionally this
+	 * method also sets this instance the main view by
+	 * {@link Appearance#setMainView(Window)}.
+	 * <p>
+	 * Note that this method may replace a previous set main window. Use this to
+	 * initialize the main frame of the program an apply individual parameters
+	 * to the returned instance.
+	 * </p>
+	 * 
+	 * @param title The title of the window
+	 * @return A predefined window with additional functionalities
+	 */
+	public JFrame createMainWindow(String title)
+	{
+//		JFrame f = new ExtendedFrame(title);
+		JFrame f = new JFrame(title);
+		f.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+		
+		this.setMainView( f );
+		
+		return f;
+	}
+	
+	
+	public JDialog createDialog(String title)
+	{
+		return createDialog(getMainView( ), title);
+	}
+	
+	/**
+	 * 
+	 * @param title
+	 * @return
+	 */
+	public JDialog createDialog(Window parent, String title)
+	{
+		JDialog d = new JDialog( parent );
+		d.setLocationRelativeTo( parent );
+		d.setTitle( title );
+
+		// Add a KeyListener to close on ESC
+		d.addKeyListener( new KeyControlAdapter( parent ) );
+
+		return d;
+	}
+	
+	
+	/**
 	 * When closing the last window the application terminates and shuts down.
 	 * 
 	 * @param implicit
@@ -124,6 +254,7 @@ public class Appearance // Maybe Surface or Front
 	 */
 	public void setImplicitExit(boolean implicit)
 	{
+		// TODO Ensure the application closes even when the main view is disposed.
 		implicitExit = implicit;
 	}
 	
@@ -141,67 +272,6 @@ public class Appearance // Maybe Surface or Front
 	}
 	
 	
-		
-	
-//	/**
-//	 * Returns the about window of this application view. If it has not been set
-//	 * yet a default window is created using some meta information from the
-//	 * underlying application instance. Initially the window is {@code null}
-//	 * that indicates the default window is returned. While the window is set
-//	 * calling {@link #setAbout(JDialog)} it will return the new window object
-//	 * the next time this method is called.
-//	 * 
-//	 * <p>
-//	 * To delete and reset to the default window simply set a {@code null}
-//	 * object to the about instance by  {@code setAbout(null)}.
-//	 * </p>
-//	 * 
-//	 * @return The about window.
-//	 * 
-//	 * @see ApplicationMeta
-//	 */
-//	public Window getAbout() 
-//	{
-//		if(about == null)
-//			return getDefaultAbout();
-//		return about;
-//	}
-//
-//
-//	/**
-//	 * Sets the about window for this application view. While this new instance
-//	 * is a {@code null} reference a default generated window is returned by
-//	 * {@link #getAbout()}. This way the current window can be reseted.
-//	 * 
-//	 * @param about The new about window object.
-//	 */
-//	public void setAbout(Window about) 
-//	{
-//		this.about = about;
-//	}
-//	
-//	
-//	/**
-//	 * 
-//	 * @return
-//	 */
-//	protected JDialog getDefaultAbout()
-//	{
-//		JDialog about = new JDialog();
-//		about.setTitle("About");
-//		
-//		if(Application.isApplication())
-//		{
-//			ApplicationMeta meta = Application.getApplication().getApplicationMetaData();
-//			
-//			if(meta != null)
-//			{
-//				
-//			}
-//		}
-//				
-//		return about;
-//	}
 	
 	
 	
@@ -213,7 +283,8 @@ public class Appearance // Maybe Surface or Front
 	/**
 	 * Sets the main window for the underlying application. Does not provide any
 	 * support for multi-framed applications where all those frames are main
-	 * windows.
+	 * windows. This makes sense because the main view represents the one which 
+	 * state indicates the state of the application.
 	 * 
 	 * @param window
 	 *            The application main window.
@@ -223,10 +294,29 @@ public class Appearance // Maybe Surface or Front
 	 */
 	public void setMainView(Window window)
 	{
-		if(hasMainView())
-			throw new IllegalStateException(ApplicationConstants.MESSAGE_VIEW_HAS_MAIN_VIEW);
-		
 		this.window = window;
+		
+		if( Application.running( ) )
+		{
+			if( window instanceof Frame )
+			{
+				Frame f = (Frame) window;
+				
+				if( f.getTitle( ).equals( null ) ||  f.getTitle( ).equals( "" ) )
+				{
+					f.setTitle( Application.get( ).getID( ) );
+				}
+			}
+			else if( window instanceof Dialog )
+			{
+				Dialog f = (Dialog) window;
+				
+				if( f.getTitle( ).equals( null ) ||  f.getTitle( ).equals( "" ) )
+				{
+					f.setTitle( Application.get( ).getID( ) );
+				}
+			}
+		}
 		
 	}
 	
@@ -252,55 +342,16 @@ public class Appearance // Maybe Surface or Front
 		return (window != null);
 	}
 	
-	
-	
-	
-	
-//	public static void maximize(Frame frame)
-//	{
-//		if(frame == null) return;
-//		frame.setExtendedState(Frame.MAXIMIZED_BOTH);
-//	}
-//	
-//	
-//	public static void minimize(Frame frame)
-//	{
-//		if(frame == null) return;
-//		frame.setState(JFrame.ICONIFIED);
-//	}
-//
-//	
-//	
-//	
-//	public static void alwaysOnTop(Window window, boolean alwaysOnTop)
-//	{
-//		if(window == null) return;
-//		if(window.isAlwaysOnTopSupported())
-//			window.setAlwaysOnTop(alwaysOnTop);
-//	}
-	
-	
-	
-	
-	
-//	public WindowSnapAdapter getSnapAdapter() 
-//	{
-//		return snapAdapter;
-//	}
-
-
-//	public ApplicationViewStateManager getViewState() {
-//		return viewState;
-//	}
-//
-//
-//	public void setViewState(ApplicationViewStateManager viewState) {
-//		this.viewState = viewState;
-//	}
-
-
 
 	
+	/**
+	 * Sets the applications default {@link DawnLookAndFeel} and updates the
+	 * current UI components.
+	 */
+	public void setConsistentLookAndFeel()
+	{
+		setLookAndFeel( new DawnLookAndFeel() );
+	}
 	
 	
 	/**
@@ -414,6 +465,384 @@ public class Appearance // Maybe Surface or Front
 					child.setEnabled(enabled);
 				}
 			}
+		}
+	}
+	
+	public Window getActiveWindow()
+	{
+		return FocusManager.getCurrentManager().getActiveWindow();
+	}
+	
+	
+	public int getWindowCount()
+	{
+		return Window.getWindows( ).length;
+	}
+	
+	
+	/**
+	 * 
+	 * @param view The window instance
+	 * @return the state
+	 * 
+	 * @see JFrame#getExtendedState()
+	 */
+	public int getWindowState(Frame view)
+	{
+		return view.getExtendedState( );
+	}
+	
+	
+	public void windowMinimize(Frame view)
+	{
+		if(view != null )
+		{
+			view.setExtendedState(Frame.ICONIFIED);
+		}
+	}
+	
+	
+	public void windowMaximize(Frame view)
+	{
+		if(view != null )
+		{
+			view.setExtendedState(Frame.MAXIMIZED_BOTH);
+		}
+	}
+	
+	
+	public void windowFullScreen(Window view)
+	{
+		// Screen size + always on top
+	}
+	
+	
+	public void windowClose(Window view)
+	{
+		if(view != null && view.isShowing( ))
+			view.dispose( );
+	}
+	
+	
+	public void windowToFront(Window view)
+	{
+		if(view != null  )
+			view.toFront( );
+	}
+	
+	
+	public void windowToBack(Window view)
+	{
+		if(view != null )
+			view.toBack( );
+	}
+	
+	
+	public boolean windowSpotlight(Window w, boolean b)
+	{
+		Window[] windows = {w};
+		return windowsSpotlight(windows, b);
+	}
+	
+	public boolean windowsSpotlight(Window[] windows, boolean b)
+	{
+		if(windows.length == 0)
+			return false;
+		
+		for(Window w : windows)
+		{
+			if( !w.isAlwaysOnTopSupported( ) )
+				return false;
+		}
+		
+		if(b)
+		{
+			standalone.toFront( );
+		}
+		else
+		{
+			standalone.dispose( );
+		}
+		
+		for(Window w : windows)
+		{
+			if(b)
+			{			
+				windowOnTopState.put( w, w.isAlwaysOnTop( ) );
+				w.setAlwaysOnTop( true );
+			}
+			else
+			{
+				boolean wasAlwaysOnTop = windowOnTopState.remove( w );
+				if(!wasAlwaysOnTop)
+					w.setAlwaysOnTop( false );
+			}
+		}
+		
+		if(b)
+		{
+			standalone.setVisible( true );
+		}
+		
+		return true;
+	}
+	
+	
+	public void setSpotlightBackground( Color c )
+	{
+		standalone.setBackground( c );
+	}
+	
+	/**
+	 * A value between 0.0 and 1.0, where 1.0 is completely opaque. Note that this only works when transparency is supported by the {@code GraphicsDevice}. 
+	 * This method checks the availability by calling {@link GraphicsDevice#isWindowTranslucencySupported(java.awt.GraphicsDevice.WindowTranslucency)}.
+	 * 
+	 * @param value 
+	 */
+	public void setSpotlightTransparency(float value)
+	{
+		if(value < 0f || value > 1f)
+			throw new IllegalArgumentException("Value "+value+" out of range. Must be between 0.0 and 1.0.");
+		
+		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
+		GraphicsDevice gd = ge.getDefaultScreenDevice( );
+		
+		if( gd.isWindowTranslucencySupported( GraphicsDevice.WindowTranslucency.TRANSLUCENT ) )
+		{
+			standalone.setOpacity(0.70f);
+		}
+	}
+	
+	/**
+	 * Listens to keystrokes and for example tries to close when ESC is pressed.
+	 * 
+	 * @param view
+	 */
+	public void windowKeyControl(Window view)
+	{
+		// see Appearance.createSubDialog()
+	}
+	
+	
+	public void windowFixSize( Window w, Dimension d )
+	{
+		w.setMaximumSize( d );
+		w.setMaximumSize( d );
+		w.setPreferredSize( d );
+		if(w instanceof Frame)
+		{
+			( (Frame) w ).setResizable( false );
+		}
+		else if(w instanceof Dialog)
+		{
+			( (Dialog) w ).setResizable( false );
+		}
+	}
+	
+	
+
+
+	/**
+	 * Enables or disables the edge snapping functionality by adding or removing
+	 * the adapter from the main window. 
+	 * 
+	 * @param enable
+	 *            Enables or disables the snapping functionality.
+	 */
+	public boolean windowSnap(Window window, boolean enable)
+	{
+		if(window == null)
+			return false;
+		
+		if(enable)
+		{
+//			if(!snapEnabled)
+//			{
+				for(ComponentListener l : window.getComponentListeners( ))
+				{
+					if(l.equals( edgeSnapAdapter ))
+						return false;
+				}
+				window.addComponentListener(edgeSnapAdapter);
+//				snapEnabled = true;
+//			}
+		}
+		else
+		{
+//			if(snapEnabled)
+//			{
+				window.removeComponentListener(edgeSnapAdapter);
+//				snapEnabled = false;
+//			}
+		}
+		
+		return true;
+	}
+	
+	
+	public void windowShake(Window view)
+	{
+		this.windowShake( view, 300 );
+	}
+	
+	
+	public void windowShake(Window view, long millis)
+	{
+		final long startMillis = System.currentTimeMillis( );
+		int posX = view.getLocation( ).x;
+		int posY = view.getLocation( ).y;
+		
+		final int DELAY = 5;
+		final double CYCLE = 50;
+		final int DISTANCE = 10;
+		final double PI2 = Math.PI * 2;
+		
+		double angle;
+		int newPosX = 0;
+		long elapsedMillis = 0;
+		
+		while(elapsedMillis < millis)
+		{
+			elapsedMillis = System.currentTimeMillis( ) - startMillis;
+			
+			if(elapsedMillis % DELAY == 0)
+			{
+				angle = (elapsedMillis % CYCLE) / CYCLE * PI2;
+				newPosX = (int) ((Math.sin( angle ) * DISTANCE) + posX);
+				
+				// Perform this on another thread to provide accessibility to the window
+				view.setLocation( newPosX, posY );
+			}
+		}
+		
+		view.setLocation( posX, posY );
+		view.repaint( );
+	}
+	
+	
+	public void windowFadeOut(Frame view)
+	{
+		this.windowFadeOut( view, 500 );
+	}
+	
+	
+	public void windowFadeOut(Frame view, long millis)
+	{
+		// TODO	Due to the Java7 undecorated frame bug
+	}
+	
+	
+	public void windowFadeIn(Window view)
+	{
+		this.windowFadeIn( view, 500 );
+	}
+	
+	
+	public void windowFadeIn(Window view, long millis)
+	{
+		// TODO Due to the Java7 undecorated frame bug
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	/**
+	 * This class extends {@code JFrame} by additional functionalities and predefined behavior.
+	 * @author kimschorat
+	 *
+	 */
+	public static class ExtendedFrame extends JFrame
+	{
+		/**
+		 * Since the user has not changed the decoration style
+		 * it needs to get decorated when it is set visible,
+		 * because initially this frame is undecorated. Checking
+		 * the counter helps to detect decoration style
+		 * modification by the user while a value > 1 indicates
+		 * the window is undecorated and otherwise it is
+		 * decorated.
+		 */
+		private int undecoratedCounter = 0;
+		
+		private final UIPersistenceManager pm;
+		
+		public ExtendedFrame(String title)
+		{
+			if( Application.running( ) )
+			{
+				 pm = new UIPersistenceManager( Application.get( ).getLocalStorage( ) );
+			}
+			else
+			{
+				 pm = new UIPersistenceManager();
+			}
+			
+			GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment( );
+			GraphicsDevice gd = ge.getDefaultScreenDevice( );
+			
+			if( gd.isWindowTranslucencySupported( GraphicsDevice.WindowTranslucency.TRANSLUCENT ) )
+			{
+				this.setUndecorated( true );
+				this.setOpacity(0f);
+			}
+			
+			// Add WindowListener to store and restore component parameters
+			this.addWindowListener( new WindowAdapter() {
+
+				@Override
+				public void windowOpened( WindowEvent e )
+				{
+					Appearance.ExtendedFrame.this.setVisible( false );
+					
+					// Restore components
+					pm.restore( Appearance.ExtendedFrame.this );
+					
+					if( gd.isWindowTranslucencySupported( GraphicsDevice.WindowTranslucency.TRANSLUCENT ) )
+					{
+						Appearance.ExtendedFrame.this.setOpacity(1f);
+						
+						/*
+						 * Since the user has not changed the decoration style
+						 * it needs to get decorated when it is set visible,
+						 * because initially this frame is undecorated. Checking
+						 * the counter helps to detect decoration style
+						 * modification by the user while a value > 1 indicates
+						 * the window is undecorated and otherwise it is
+						 * decorated.
+						 */
+						if(undecoratedCounter <= 1)
+							Appearance.ExtendedFrame.this.setUndecorated( false );	
+					}
+					
+					Appearance.ExtendedFrame.this.setVisible( true );
+				}
+
+				@Override
+				public void windowClosing( WindowEvent e )
+				{
+					// Store components
+					pm.store( Appearance.ExtendedFrame.this );
+				}			
+			});
+		}
+		
+		@Override
+		public void setUndecorated( boolean undecorated )
+		{
+			super.setUndecorated( undecorated );
+			
+			if(undecorated)
+				undecoratedCounter ++;
+			else
+				undecoratedCounter --;
 		}
 	}
 

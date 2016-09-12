@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<java version="1.8.0_65" class="java.beans.XMLDecoder">
+ <object class="java.util.HashMap">
+  <void method="put">
+   <string>frame0</string>
+   <object class="org.drost.application.ext.state.WindowState"/>
+  </void>
+  <void method="put">
+   <string>JSplitPane.JPanel.JPanel.JTabbedPane.null.contentPane.null.layeredPane.JRootPane</string>
+   <object class="org.drost.application.ext.state.SplitPaneState"/>
+  </void>
+  <void method="put">
+   <string>JScrollPane.JPanel.JPanel.JTabbedPane.null.contentPane.null.layeredPane.JRootPane</string>
+   <object class="org.drost.application.ext.state.ScrollPaneState"/>
+  </void>
+  <void method="put">
+   <string>JTabbedPane.null.contentPane.null.layeredPane.JRootPane</string>
+   <object class="org.drost.application.ext.state.TabbedPaneState"/>
+  </void>
+ </object>
+</java>
