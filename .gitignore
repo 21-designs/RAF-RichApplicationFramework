@@ -4,6 +4,7 @@
 
 .project
 .metadata
+.DS_Store
 bin/
 tmp/
 *.tmp
