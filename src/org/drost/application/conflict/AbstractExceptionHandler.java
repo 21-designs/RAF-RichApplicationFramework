@@ -19,8 +19,6 @@
  */
 package org.drost.application.conflict;
 
-import org.drost.application.conflict.manager.ConflictManager;
-
 /**
  * Handles all uncaught exceptions application wide. Whenever an exception
  * is thrown because any unexpected state change occurs, this handler will

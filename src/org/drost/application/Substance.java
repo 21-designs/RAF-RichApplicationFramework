@@ -27,6 +27,7 @@ import org.drost.application.conflict.AbstractExceptionHandler;
 import org.drost.application.conflict.AbstractInactivityHandler;
 import org.drost.application.suppliers.PreferencesSupport;
 import org.drost.application.suppliers.PropertiesSupport;
+import org.drost.application.ui.GUI;
 
 /**
  * This class stores application related information about the application
@@ -83,7 +84,7 @@ public class Substance // Or maybe Content
 	 * 
 	 * @see PreferencesSupport
 	 * @see LocalStorage
-	 * @see Appearance
+	 * @see GUI
 	 * @see PreloaderSupport
 	 */
 	private Substance( )

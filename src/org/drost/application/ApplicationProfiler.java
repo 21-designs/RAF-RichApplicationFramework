@@ -19,12 +19,20 @@
  */
 package org.drost.application;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
+
+import javax.swing.filechooser.FileSystemView;
 
 /**
  * @author kimschorat
@@ -32,10 +40,220 @@ import java.util.Map;
  */
 public class ApplicationProfiler
 {
+	
+	
+	// Java runtime environment
+	
+//	private static String fullVersion = getFullVersion();
+//	
+//	private static URL getVersionURL()
+//	{
+//		try
+//		{
+//			// FIXME URL is dead
+//			return new URL( "http://java.com/applet/JreCurrentVersion2.txt" );
+//		}
+//		catch ( MalformedURLException e )
+//		{
+//			e.printStackTrace();
+//		}
+//		
+//		return null;
+//	}
+//	
+//	private static String getFullVersion()
+//	{
+//		try
+//		{
+//			return new BufferedReader(
+//					new InputStreamReader( getVersionURL().openStream( ) ) )
+//					.readLine( );
+//		}
+//		catch ( IOException e )
+//		{
+//			e.printStackTrace();
+//		}
+//		
+//		return "1.8";
+//	}
+	
+//	static {
+//		
+//		boolean successfullyRetrievedCurrentVersion = false;
+//		
+//		while(successfullyRetrievedCurrentVersion)
+//		{
+//			try (BufferedReader br = new BufferedReader(new InputStreamReader(new URL("http://java.com/applet/JreCurrentVersion2.txt").openStream()))) 
+//			{
+//				fullVersion = br.readLine();
+//				successfullyRetrievedCurrentVersion = true;
+//			} catch (IOException e) {
+//				// FIXME e.printStackTrace(); sometimes throw a java.lang.ExceptionInInitializerError
+////				fullVersion = "_";	// Undefined
+//			}
+//		}
+//		
+//	}
+
+//	/** Stores the identifier of the latest java version. */
+//	public static final String LATEST_JAVA_VERSION_AND_REVISION = fullVersion;
+//	
+//	/** Stores the number of the current java version. */
+//	public static final String LATEST_JAVA_VERSION = fullVersion.split("_")[0];
+//	
+//	/** Stores the number of the latest java reversion. */
+//	public static final String LATEST_JAVA_REVISION = fullVersion.split("_")[1];
+
+	/** Stores the identifier of the current java version. */
+	public static final String CURRENT_JAVA_VERSION = System.getProperty("java.version");	
+	
+	/** True if running Java 1.3 or later. */
+	public static final boolean IS_JAVA_13_OR_LATER = System.getProperty("java.version").compareTo("1.3") >= 0;
+
+	/** True if running Java 1.4 or later. */
+	public static final boolean IS_JAVA_14_OR_LATER = System.getProperty("java.version").compareTo("1.4") >= 0;
+
+	/** True if running Java 1.5 or later. */
+	public static final boolean IS_JAVA_15_OR_LATER = System.getProperty("java.version").compareTo("1.5") >= 0;
+
+	/** True if running Java 1.6 or later. */
+	public static final boolean IS_JAVA_16_OR_LATER = System.getProperty("java.version").compareTo("1.6") >= 0;
+
+	/** True if running Java 1.7 or later. */
+	public static final boolean IS_JAVA_17_OR_LATER = System.getProperty("java.version").compareTo("1.7") >= 0;
+	
+	/** True if running Java 1.8 or later. */
+	public static final boolean IS_JAVA_18_OR_LATER = System.getProperty("java.version").compareTo("1.8") >= 0;
+
+	
+	
+	
+	
+	
+	
+	
+	
+	// Platform analyzer
+	
+	/** Stores the name of the current operating system. */
+	public static final String OS = System.getProperty("os.name").toLowerCase();
+	
+	/** Indicates whether you are running Mac OS */
+	public static final boolean IS_MAC_OS = (OS.indexOf("mac") >= 0);
+	
+	/** Covers several Windows OS. Returns true for one these three, otherwise false */
+	public static final boolean IS_WINDOWS_OS = (OS.indexOf("win") >= 0);
+	
+	/** Covers Unix, Linux and Solaris. Returns true for one these three, otherwise false */
+	public static final boolean IS_UNIX_OS = (OS.indexOf("nix") >= 0 || OS.indexOf("nux") >= 0 || OS.indexOf("aix") > 0 );
+	
+	/** Indicates whether you are running Solaris */
+	public static final boolean IS_SOLARIS_OS = (OS.indexOf("sol") >= 0);
+	
+	public static boolean isWindows() 
+	{
+		return IS_WINDOWS_OS;
+	}
+	
+	public static boolean isWindows9X() 
+	{
+		return (OS.indexOf("95") >= 0 || OS.indexOf("98") >= 0 || OS.indexOf("me") >= 0);
+	}
+	
+	public static boolean isWindows95() 
+	{
+		return (OS.indexOf("95") >= 0);
+	}
+	
+	public static boolean isWindows98() 
+	{
+		return (OS.indexOf("98") >= 0);
+	}
+	
+	public static boolean isWindowsME() 
+	{
+		return (OS.indexOf("me") >= 0);
+	}
+	
+	/**
+	 * Returns <code>true</code> while the underlying operating system belongs 
+	 * to the NT series (Windows New Technology).
+	 * @return <code>true</code> if the operating system is Windows NT, otherwise <code>false</code>.
+	 */
+	public static boolean isWindowsNT() 
+	{
+		return (OS.indexOf("NT") >= 0 || OS.indexOf("2000") >= 0 || OS.indexOf("2003") >= 0
+		        || OS.indexOf("XP") >= 0);
+	}
+	
+	public static boolean isWindows2000() 
+	{
+		return (OS.indexOf("2000") >= 0);
+	}
+	
+	public static boolean isWindows2003() 
+	{
+		return (OS.indexOf("2003") >= 0);
+	}
+	
+	public static boolean isWindowsXP() 
+	{
+		return (OS.indexOf("XP") >= 0);
+	}
+	
+	public static boolean isWindowsVista() 
+	{
+		return (OS.indexOf("Vista") >= 0);
+	}
+	
+	public static boolean isLinux()
+	{
+		return (OS.indexOf("nux") >= 0);
+	}
+
+	public static boolean isMac() 
+	{
+		return IS_MAC_OS;
+	}
+	
+	public static boolean isMacOSX() 
+	{
+		return (OS.indexOf("os x") >= 0);
+	}
+
+	public static boolean isUnix() 
+	{
+		return IS_UNIX_OS;
+	}
+
+	public static boolean isSolaris() 
+	{
+		return IS_SOLARIS_OS;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	/**
+	 * The singleton instance.
+	 */
 	private static ApplicationProfiler instance = new ApplicationProfiler( );
 
+	/**
+	 * The startup time of the application.
+	 */
 	private final long applicationStartTime;
 
+	/*
+	 * Creates a new instance with the current time stamp. Because it is a
+	 * static field this time stamp is equal to the applications startup time.
+	 */
 	private ApplicationProfiler( )
 	{
 		applicationStartTime = System.currentTimeMillis( );
@@ -187,6 +405,42 @@ public class ApplicationProfiler
 		return main.getResource( main.getSimpleName( ) + ".class" ).toString( ).startsWith( "jar:" );
 	}
 
+	
+	// Disk statistics
+	
+	/**
+	 * Returns the number of free <i>and</i> usable space on the hard drive.
+	 * Some operating systems allocate blocks on the disk that are actual free
+	 * but not usable by the user.
+	 * 
+	 * @return
+	 */
+	public long getFreeDiskSpace()
+	{
+		return FileSystemView.getFileSystemView().getRoots()[0].getUsableSpace( );
+	}
+	
+	/**
+	 * Returns the total number of bytes on the hard drive.
+	 * @return
+	 */
+	public long getTotalDiskSpace()
+	{
+		return FileSystemView.getFileSystemView().getRoots()[0].getTotalSpace( );
+	}
+	
+	/**
+	 * Returns the number of used space on the hard drive.
+	 * @return
+	 */
+	public long getUsedDiskSpace()
+	{
+		return getTotalDiskSpace() - getFreeDiskSpace();
+	}
+	
+	
+	
+	
 	// Memory statistics
 
 	public long getTotalMemory( )
@@ -208,11 +462,9 @@ public class ApplicationProfiler
 	{
 		return getTotalMemory( ) - getFreeMemory( );
 	}
-
-	// Platform analysis
-
-	// Java Runtime environment
-
+	
+	
+	
 	// Database connection
 
 	/**

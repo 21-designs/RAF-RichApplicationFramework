@@ -730,7 +730,9 @@ public class UIPersistenceManager
 	{
 		if(!isNull(c))
 		{
-			storage.containsFile(storage.getDirectoryFor(this.getClass()), getComponentName(c));
+//			if( !storage.containsFile(storage.getDirectoryFor(this.getClass()), getComponentName(c)) )
+//				return;
+			
 			// read from file
 			Map<String, Object> stateMap = read( getComponentName(c) );
 			
@@ -765,6 +767,8 @@ public class UIPersistenceManager
 		
 		ArrayList<String> serializableKeys = (ArrayList<String>) storage.load(componentName + STATE_KEYS_EXTENSION);
 		ArrayList<Object> serializableValues = (ArrayList<Object>) storage.load(componentName + STATE_VALUES_EXTENSION);
+		
+		System.out.println( serializableKeys );
 		
 		Map<String, Object> states = new HashMap<String, Object>();
 		for(int i = 0; i < serializableKeys.size(); i++)

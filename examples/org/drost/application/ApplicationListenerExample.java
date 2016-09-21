@@ -72,7 +72,7 @@ public class ApplicationListenerExample extends AbstractExample
 			}
 
 			@Override
-			public void applicationClosed( ApplicationEvent e )
+			public void applicationClosing( ApplicationEvent e )
 			{
 				System.out.println("closed");
 			}

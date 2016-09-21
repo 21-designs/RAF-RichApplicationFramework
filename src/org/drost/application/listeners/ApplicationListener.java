@@ -6,7 +6,7 @@ public interface ApplicationListener extends EventListener
 {
 	public void applicationLaunched(ApplicationEvent e);
 		
-	public void applicationClosed(ApplicationEvent e);
+	public void applicationClosing(ApplicationEvent e);
 	
 	public void applicationUpdated(ApplicationEvent e);
 	

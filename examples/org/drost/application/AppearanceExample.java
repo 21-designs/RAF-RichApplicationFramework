@@ -65,14 +65,14 @@ public class AppearanceExample extends AbstractExample
 		
 		JFrame f = new JFrame();
 		
-		APPLICATION.getAppearance( ).setMainView( f );
-		if(!APPLICATION.getAppearance( ).hasMainView( ))
+		APPLICATION.getGUI( ).setMainWindow( f );
+		if(!APPLICATION.getGUI( ).hasMainWindow( ))
 			throw new IllegalStateException("No main view");
 		
 		// Whenever the last window is closed the application will shut down
-		APPLICATION.getAppearance( ).setImplicitExit( true );
+		APPLICATION.getGUI( ).setImplicitExit( true );
 		
-		APPLICATION.getAppearance( ).initializeMainView( f, new Dimension(300, 200), ID );
+		APPLICATION.getGUI( ).initializeWindow( f, new Dimension(300, 200), ID );
 		f.setVisible( true );
 		
 		

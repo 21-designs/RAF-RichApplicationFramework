@@ -20,7 +20,7 @@ public class ApplicationAdapter implements ApplicationListener
 	}
 
 	@Override
-	public void applicationClosed( ApplicationEvent e )
+	public void applicationClosing( ApplicationEvent e )
 	{
 		
 	}
