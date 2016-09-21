@@ -23,10 +23,10 @@ import java.awt.Desktop;
 import java.net.URI;
 
 import org.drost.application.Application;
-import org.drost.application.conflict.manager.ConflictManager;
+import org.drost.application.ApplicationProfiler;
+import org.drost.application.RuntimeEnvironmentUtils;
 import org.drost.application.listeners.ApplicationAdapter;
 import org.drost.application.listeners.ApplicationEvent;
-import org.drost.application.utils.RuntimeEnvironmentUtils;
 
 /**
  * @author kimschorat
@@ -82,7 +82,7 @@ public abstract class AbstractJavaVersionHandler implements ConflictHandler<Doub
 			{
 				if( !isValidJavaVersion() )
 				{
-					handle(new ConflictInfo<Double>(parseJavaVersion(RuntimeEnvironmentUtils.CURRENT_JAVA_VERSION), Thread.currentThread()));
+					handle(new ConflictInfo<Double>(parseJavaVersion(ApplicationProfiler.CURRENT_JAVA_VERSION), Thread.currentThread()));
 				}
 			}
 		};
@@ -169,25 +169,25 @@ public abstract class AbstractJavaVersionHandler implements ConflictHandler<Doub
 		return Double.parseDouble(version);
 	}
 	
-	/**
-	 * 
-	 * @throws InadequateJavaVersionException
-	 */
-	protected void alertForJavaUpdate() 
-	{
-		Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null;
-	    if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
-	        try {
-	            desktop.browse(new URI("http://java.com/download"));
-	        } catch (Exception e) {
-	            e.printStackTrace();
-	        }
-	    }
-		
-		throw new RuntimeException("\nYour java version " + RuntimeEnvironmentUtils.CURRENT_JAVA_VERSION 
-				+ " is too low. Please install " + minimumRequiredJavaVersion 
-				+ " or higher. We recomment to update to " + RuntimeEnvironmentUtils.LATEST_JAVA_VERSION_AND_REVISION);
-	}
+//	/**
+//	 * 
+//	 * @throws InadequateJavaVersionException
+//	 */
+//	protected void alertForJavaUpdate() 
+//	{
+//		Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null;
+//	    if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
+//	        try {
+//	            desktop.browse(new URI("http://java.com/download"));
+//	        } catch (Exception e) {
+//	            e.printStackTrace();
+//	        }
+//	    }
+//		
+//		throw new RuntimeException("\nYour java version " + ApplicationProfiler.CURRENT_JAVA_VERSION 
+//				+ " is too low. Please install " + minimumRequiredJavaVersion 
+//				+ " or higher. We recomment to update to " + ApplicationProfiler.LATEST_JAVA_VERSION_AND_REVISION);
+//	}
 	
 	/**
 	 * 
@@ -195,7 +195,7 @@ public abstract class AbstractJavaVersionHandler implements ConflictHandler<Doub
 	 */
 	protected boolean isValidJavaVersion()
 	{
-		return (parseJavaVersion(RuntimeEnvironmentUtils.CURRENT_JAVA_VERSION) < minimumRequiredJavaVersion);
+		return (parseJavaVersion(ApplicationProfiler.CURRENT_JAVA_VERSION) < minimumRequiredJavaVersion);
 	}
 	
 

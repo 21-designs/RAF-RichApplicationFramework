@@ -8,7 +8,7 @@ public class ApplicationEvent extends EventObject implements Serializable, Compa
 {	
 	public static final int APPLICATION_LAUNCHED = 0x01;
 	
-	public static final int APPLICATION_CLOSED = 0x02;
+	public static final int APPLICATION_CLOSING = 0x02;
 	
 	public static final int APPLICATION_UPDATED = 0x04;
 	

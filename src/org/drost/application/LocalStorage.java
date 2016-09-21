@@ -40,7 +40,6 @@ import org.drost.application.interfaces.SaveAsConfiguration;
 import org.drost.application.interfaces.SaveAsData;
 import org.drost.application.interfaces.SaveAsResource;
 import org.drost.application.utils.FileUtils;
-import org.drost.application.utils.PlatformUtils;
 
 /**
  * Defines a local file storage interface, This class allows to define a local
@@ -662,7 +661,7 @@ public final class LocalStorage	// While the app framework uses the same name, r
 		String home = System.getProperty("user.home");
 		File parent = new File(home).getParentFile();
 
-		if (PlatformUtils.isWindowsNT()) // NT/2000/XP
+		if (ApplicationProfiler.isWindowsNT()) // NT/2000/XP
 		{
 			// C:\Documents and Settings\All Users\Application Data
 			// Surmise that the "All Users" folder will be a child of the
@@ -672,7 +671,7 @@ public final class LocalStorage	// While the app framework uses the same name, r
 				return folder.getAbsolutePath();
 		}
 
-		else if (PlatformUtils.isWindows9X()) // 95/98/ME
+		else if (ApplicationProfiler.isWindows9X()) // 95/98/ME
 		{
 			// C:\Windows
 			File folder = new File(home);
@@ -680,7 +679,7 @@ public final class LocalStorage	// While the app framework uses the same name, r
 				return folder.getAbsolutePath();
 		}
 
-		else if (PlatformUtils.isWindowsVista()) 
+		else if (ApplicationProfiler.isWindowsVista()) 
 		{
 			// C:\ProgramData
 			File folder = new File(parent.getParentFile(), "ProgramData");
@@ -692,7 +691,7 @@ public final class LocalStorage	// While the app framework uses the same name, r
 			if (folder.canRead() && folder.canWrite())
 				return folder.getAbsolutePath();
 		}
-		else if (PlatformUtils.isMac()) 
+		else if (ApplicationProfiler.isMac()) 
 		{
 			File folder = new File("/Library/Application Support");
 			

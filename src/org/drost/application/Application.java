@@ -38,11 +38,12 @@ import java.util.Properties;
 import javax.swing.UIManager;
 import javax.swing.event.EventListenerList;
 
+import org.drost.application.listeners.ApplicationAdapter;
 import org.drost.application.listeners.ApplicationEvent;
 import org.drost.application.listeners.ApplicationListener;
-import org.drost.application.plaf.dawn.DawnLookAndFeel;
+import org.drost.application.plaf.rich.RichLookAndFeel;
 import org.drost.application.suppliers.PropertiesSupport;
-import org.drost.application.utils.PlatformUtils;
+import org.drost.application.ui.GUI;
 
 /**
  * A bundles of most common features related to a basic application.
@@ -156,6 +157,14 @@ public class Application // Implement 'Observable' or add event listener system
 	private FileChannel	lockFileChannel	= null;
 	private FileLock	lock			= null;
 	
+	
+	private boolean createPropertyFileOnShutdown = false;
+	
+	/**
+	 * Avoids infinity loops invoking shutdown() more than once.
+	 */
+	private boolean shutdownAlreadyInitiated = false;
+	
 	/**
 	 * The context of this application instance that stores some application
 	 * related content.
@@ -170,7 +179,7 @@ public class Application // Implement 'Observable' or add event listener system
 	/**
 	 * Provides functionality to manage the application GUI.
 	 */
-	private Appearance appearance;
+	private GUI gui;
 
 	/**
 	 * Wraps the singleton instance and prevents the usage of double-checked
@@ -211,7 +220,7 @@ public class Application // Implement 'Observable' or add event listener system
 	private Application( final String ID )
 	{
 		if( !isValidID( ID ) )
-			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
+			throw new IllegalArgumentException( "Invalid argument. The unique identifer for the application cannot be empty or null." );
 
 		{
 			// Initializes the substance singleton.
@@ -228,7 +237,7 @@ public class Application // Implement 'Observable' or add event listener system
 			}
 
 			// Initializes the applications appearance.
-			appearance = new Appearance( );
+			gui = new GUI( null );
 		}
 
 		{
@@ -309,7 +318,7 @@ public class Application // Implement 'Observable' or add event listener system
 	 * 
 	 * @see #launch(String)
 	 */
-	public static Application get( )
+	public static synchronized Application get( )
 	{
 		if( Application.running( ) )
 		{
@@ -318,7 +327,7 @@ public class Application // Implement 'Observable' or add event listener system
 		else
 		{
 			// Maybe return null instead of throwing an exception.
-			throw new IllegalStateException( ApplicationConstants.MESSAGE_APPLICATION_NOT_INITIALIZED );
+			throw new IllegalStateException( "The application is not running at this time. Cannot get an undefined instance." );
 		}
 	}
 
@@ -344,13 +353,13 @@ public class Application // Implement 'Observable' or add event listener system
 	 * 
 	 * @see Application#isValidID(String)
 	 */
-	public static synchronized Application launch( final String ID )
+	public final static synchronized Application launch( final String ID )
 	{
 		if( Application.running( ) )
-			throw new RuntimeException( ApplicationConstants.MESSAGE_APPLICATION_ALREADY_INITIALIZED );
+			throw new RuntimeException( "The application has already been initialized." );
 
 		if( !isValidID( ID ) )
-			throw new IllegalArgumentException( ApplicationConstants.MESSAGE_APPLICATION_INVALID_ID );
+			throw new IllegalArgumentException( "Invalid argument. The unique identifer for the application cannot be empty or null." );
 
 		create( ID );
 
@@ -360,24 +369,9 @@ public class Application // Implement 'Observable' or add event listener system
 			get( ).fireApplicationRestarted( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_RESTARTED ) );
 		}
 
-		// substance = Substance.get( );
-
-//		 DefaultInactivityHandler inactiveHandler = new
-//		 DefaultInactivityHandler();
-//		 inactiveHandler.registerHandler( );
-//		 app.getContext( ).getStateChangeController( ).setInactivityHandler(
-//		 inactiveHandler );
-//		
-//		
-//		 DefaultExceptionHandler exceptionHandler = new
-//		 DefaultExceptionHandler();
-//		 exceptionHandler.registerHandler( );
-//		 app.getContext( ).getStateChangeController( ).setExceptionHandler(
-//		 exceptionHandler );
-
 		Substance substance = get( ).getSubstance( );
 		LocalStorage localStorage = get( ).getLocalStorage( );
-		Appearance appearance = get( ).getAppearance( );
+		GUI appearance = get( ).getGUI( );
 
 		PropertiesSupport ps = substance.getPropertiesSupport( );
 
@@ -398,7 +392,7 @@ public class Application // Implement 'Observable' or add event listener system
 					if( property != null && !property.equals( "" ))
 					{
 						if( property == "auto" )
-							property = DawnLookAndFeel.class.getCanonicalName();
+							property = RichLookAndFeel.class.getCanonicalName();
 						
 						appearance.setLookAndFeel( property );
 					}
@@ -418,14 +412,20 @@ public class Application // Implement 'Observable' or add event listener system
 					}
 				}
 			}
+			
+			if( !p.getProperty( "name" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ) )
+			{
+				String property = p.getProperty( "name" );
+				System.setProperty( "program.name", property );
+			}
 
 			// FIXME Doesn't has any main view at this point
 			if( !p.getProperty( "title" ).equals( PropertiesSupport.PROPERTY_UNDEFINED ) )
 			{
 				String property = p.getProperty( "title" );
-				if( appearance.hasMainView( ) )
+				if( appearance.hasMainWindow( ) )
 				{
-					Window w = appearance.getMainView( );
+					Window w = appearance.getMainWindow( );
 
 					if( w instanceof Frame )
 						( (Frame) w ).setTitle( property );
@@ -467,11 +467,9 @@ public class Application // Implement 'Observable' or add event listener system
 			// PropertiesService.PROPERTY_UNDEFINED ); Support user session
 			// p.setProperty( "sessionpass",
 			// PropertiesService.PROPERTY_UNDEFINED ); Support user session
-
-			// Saving this file to the storage makes it persistent and
-			// prevents it from removing after shutdown.
-			 ps.save( localStorage );
 		}
+		
+		
 
 		/*
 		 * Adds a global window event listener to the EDT. This is used to shut
@@ -492,7 +490,8 @@ public class Application // Implement 'Observable' or add event listener system
 
 					if(visibleWindows == 0 && substance != null && appearance != null && appearance.isImplicitExit( ))
 					{
-						get().shutdown( );
+						if( Application.running( ) )
+							get().shutdown( );
 					}
 				}
 				
@@ -503,7 +502,6 @@ public class Application // Implement 'Observable' or add event listener system
 
 			}
 		};
-
 		Toolkit.getDefaultToolkit( ).addAWTEventListener( listener, eventMask );
 
 		Runtime.getRuntime( ).addShutdownHook( new Thread( )
@@ -511,20 +509,13 @@ public class Application // Implement 'Observable' or add event listener system
 			public void run( )
 			{
 				if( Application.running( ) )
+				{
+					// DO NOT CALL shutdown() to prevent an application crash
+					// due to an infinity loop!
 					get( ).close( );
+				}
 			}
 		} );
-
-		
-		/*
-		 * Not used yet
-		 */
-		// try
-		// {
-		// System.setProperty("java.net.useSystemProxies", "true");
-		// } catch(SecurityException e) {
-		// // Application needs to be singed.
-		// }
 
 		get().fireApplicationLaunched( new ApplicationEvent( get(), ApplicationEvent.APPLICATION_LAUNCHED ) );
 		
@@ -632,8 +623,17 @@ public class Application // Implement 'Observable' or add event listener system
 	 * used to free resources as well as to check if the application is able to
 	 * exit or whether there are untreated dependencies.
 	 */
-	public void shutdown( )
-	{
+	public synchronized void shutdown( )
+	{		
+		if(shutdownAlreadyInitiated)
+		{
+			return;
+		}
+		else
+		{
+			shutdownAlreadyInitiated = true;
+		}
+		
 		close();
 		
 		Runtime.getRuntime( ).exit( 0 );
@@ -643,17 +643,28 @@ public class Application // Implement 'Observable' or add event listener system
 	/**
 	 * 
 	 */
-	private void close( )
+	private synchronized void close( )
 	{
-		get( ).fireApplicationClosed( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_CLOSED ) );
-		
 		// Check if application is able or allowed to exit
-
-		// Close streams and free resources
+		
+		
+		
+		
+		
+		// Fire closing event
+		get( ).fireApplicationClosing( new ApplicationEvent( get( ), ApplicationEvent.APPLICATION_CLOSING ) );
+		
+		if(createPropertyFileOnShutdown)
+			get().getSubstance( ).getPropertiesSupport( ).save( get().getLocalStorage( ) );
+		
+		
+		
+		// Finally close streams and free resources
 		instanceWrapper = null;
 		Substance.substance = null;
 		
 		applicationListeners = null;
+				
 	}
 
 
@@ -729,25 +740,6 @@ public class Application // Implement 'Observable' or add event listener system
 		System.exit( 0 );
 	}
 
-	// /**
-	// * Returns whether the inactive state has been entered. This is a cover
-	// * method for {@code
-	// getContext().getStateChangeController().getInactivityHandler().isInactive()}.
-	// *
-	// * @return whether the inactive state has been entered.
-	// *
-	// * @see #setInactiveIntervalMinutes(int)
-	// */
-	// public boolean isInactive( )
-	// {
-	// if(get().getContext().getStateChangeController().getInactivityHandler( )
-	// != null)
-	// return
-	// get().getContext().getStateChangeController().getInactivityHandler(
-	// ).isInactive( );
-	//
-	// return false;
-	// }
 
 	/**
 	 * Locks this application and marks it as a single instance application.
@@ -879,6 +871,17 @@ public class Application // Implement 'Observable' or add event listener system
 
 		return false;
 	}
+	
+	
+	/**
+	 * Writing out several application related properties helps initializing this application the next time it is launched. 
+	 * It is also possible to fill in any related properties manually
+	 * @param b
+	 */
+	public void createPropertyFileOnShutdown(boolean b)
+	{
+		createPropertyFileOnShutdown = b;
+	}
 
 	/**
 	 * Returns the application context that groups several application related
@@ -920,9 +923,9 @@ public class Application // Implement 'Observable' or add event listener system
 	 * 
 	 * @return The appearance object holding viewable data.
 	 */
-	public Appearance getAppearance( )
+	public GUI getGUI( )
 	{
-		return appearance;
+		return gui;
 	}
 
 	/**
@@ -931,9 +934,9 @@ public class Application // Implement 'Observable' or add event listener system
 	 * @param appearance
 	 *            The new appearance object.
 	 */
-	public void setAppearance( Appearance appearance )
+	public void setGUI( GUI appearance )
 	{
-		this.appearance = appearance;
+		this.gui = appearance;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -967,13 +970,13 @@ public class Application // Implement 'Observable' or add event listener system
 		}
 	}
 
-	protected void fireApplicationClosed( ApplicationEvent e )
+	protected void fireApplicationClosing( ApplicationEvent e )
 	{
 		ApplicationListener[] listeners = applicationListeners.getListeners( ApplicationListener.class );
 
 		for( ApplicationListener l : listeners )
 		{
-			l.applicationClosed( e );
+			l.applicationClosing( e );
 		}
 	}
 
@@ -1028,7 +1031,7 @@ public class Application // Implement 'Observable' or add event listener system
 		StringBuffer sb = new StringBuffer( );
 		sb.append( this.getClass( ).getName( ) );
 
-		sb.append( " id=" + id + " locked=" + isLocked( ) + " platform=" + PlatformUtils.OS );
+		sb.append( " id=" + id + " locked=" + isLocked( ) + " platform=" + ApplicationProfiler.OS );
 		return sb.toString( );
 	}
 }

@@ -19,7 +19,8 @@
  */
 package org.drost.application.conflict;
 
-import org.drost.application.utils.RuntimeEnvironmentUtils;
+import org.drost.application.ApplicationProfiler;
+import org.drost.application.RuntimeEnvironmentUtils;
 
 /**
  * @author kimschorat
@@ -30,9 +31,9 @@ public class DefaultJavaVersionHandler extends AbstractJavaVersionHandler
 	@Override
 	public void handle( ConflictInfo<Double> info )
 	{
-		throw new RuntimeException("\nYour java version " + RuntimeEnvironmentUtils.CURRENT_JAVA_VERSION 
+		throw new RuntimeException("\nYour java version " + ApplicationProfiler.CURRENT_JAVA_VERSION 
 				+ " is too low. Please install " + minimumRequiredJavaVersion 
-				+ " or higher. We recomment to update to " + RuntimeEnvironmentUtils.LATEST_JAVA_VERSION_AND_REVISION);
+				+ " or higher.");
 	}
 
 }

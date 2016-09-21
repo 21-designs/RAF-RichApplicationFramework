@@ -30,8 +30,6 @@ import javax.management.Notification;
 import javax.management.NotificationEmitter;
 import javax.management.NotificationListener;
 
-import org.drost.application.conflict.manager.ConflictManager;
-
 /**
  * @author kimschorat
  *

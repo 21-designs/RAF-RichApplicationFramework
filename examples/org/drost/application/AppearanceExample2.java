@@ -30,6 +30,8 @@ import javax.swing.JColorChooser;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 
+import org.drost.application.ui.GUI;
+
 /**
  * @author kimschorat
  *
@@ -70,21 +72,15 @@ public class AppearanceExample2 extends AbstractExample
 	{
 		new AppearanceExample2();
 		
-		for( String s : ApplicationProfiler.getProfiler( ).getJVMArguments( ) )
-		{
-			System.out.println(s);
-		}
-		
-		JFrame f = APPLICATION.getAppearance( ).createMainWindow( ID );
+		JFrame f = APPLICATION.getGUI( ).createMainWindow( );
 		f.setSize( new Dimension(300, 200) );
 		f.setLocationRelativeTo( null );
 		
-		APPLICATION.getAppearance( ).setConsistentLookAndFeel( );
+		APPLICATION.getGUI( ).setConsistentLookAndFeel( );
 		
-		Appearance a = Application.get( ).getAppearance( );
-		a.windowSnap( f, true );
-//		a.setSpotlightBackground( Color.CYAN );
-//		a.setSpotlightTransparency( 0.4f );
+		GUI a = Application.get( ).getGUI( );
+		a.enableEdgeSnap( f, true );
+		a.setMainWindowConfirmExit( true );
 		
 		JButton b0 = new JButton("Dialog");
 		b0.addActionListener(new ActionListener()
@@ -95,7 +91,7 @@ public class AppearanceExample2 extends AbstractExample
 				d.setLocationRelativeTo( f );
 				d.setSize( 200, 150 );
 				d.setVisible( true );
-				a.windowSnap( d, true );
+				a.enableEdgeSnap( d, true );
 			}
 		});
 		JButton b1 = new JButton("Shake");
@@ -103,7 +99,7 @@ public class AppearanceExample2 extends AbstractExample
 			@Override
 			public void actionPerformed( ActionEvent e )
 			{
-				a.windowShake( f );
+				a.shake( f );
 			}
 		});
 		JButton b2 = new JButton("Focus");
@@ -116,11 +112,11 @@ public class AppearanceExample2 extends AbstractExample
 			{
 				if(!isAlone)
 				{
-					a.windowSpotlight( f, true );
+					a.spotlight( f, true );
 				}
 				else
 				{
-					a.windowSpotlight( f, false );
+					a.spotlight( f, false );
 				}
 				
 				isAlone = !isAlone;

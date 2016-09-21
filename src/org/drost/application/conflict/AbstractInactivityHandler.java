@@ -28,7 +28,6 @@ import java.awt.event.ActionListener;
 import javax.swing.Timer;
 
 import org.drost.application.Application;
-import org.drost.application.conflict.manager.ConflictManager;
 
 /**
  * Handles a certain state when the user seems to be inactive. This is

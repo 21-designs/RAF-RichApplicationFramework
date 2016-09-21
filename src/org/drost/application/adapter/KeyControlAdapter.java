@@ -31,7 +31,7 @@ import org.drost.application.Application;
  * @author kimschorat
  *
  */
-public class KeyControlAdapter implements KeyListener
+public class KeyControlAdapter implements KeyListener // TODO Implement a separate version for Frames and one for Dialogs.
 {
 	private Window r;
 
@@ -49,7 +49,7 @@ public class KeyControlAdapter implements KeyListener
 		
 		try
 		{
-			if(Application.get( ).getAppearance( ).getMainView( ).equals( reference ))
+			if(Application.get( ).getGUI( ).getMainWindow( ).equals( reference ))
 				throw new IllegalArgumentException("The window cannot be the main view of this application");
 		}
 		catch(Exception e)
